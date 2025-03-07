@@ -1,0 +1,16 @@
+{"time":"2025-03-07T17:23:06.764759991Z","level":"INFO","msg":"stream: starting","core version":"0.19.8","symlink path":"/workspace/PolynomialSubstructure/Training/example/wandb/run-20250307_172306-irvokw2g/logs/debug-core.log"}
+{"time":"2025-03-07T17:23:06.990565499Z","level":"INFO","msg":"created new stream","id":"irvokw2g"}
+{"time":"2025-03-07T17:23:06.99097645Z","level":"INFO","msg":"stream: started","id":"irvokw2g"}
+{"time":"2025-03-07T17:23:06.991027474Z","level":"INFO","msg":"handler: started","stream_id":"irvokw2g"}
+{"time":"2025-03-07T17:23:06.991035669Z","level":"INFO","msg":"writer: Do: started","stream_id":"irvokw2g"}
+{"time":"2025-03-07T17:23:06.991129553Z","level":"INFO","msg":"sender: started","stream_id":"irvokw2g"}
+{"time":"2025-03-07T17:23:07.38689391Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-03-07T17:33:47.196598975Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-03-07T17:33:47.197863083Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-03-07T17:33:48.197987235Z","level":"INFO","msg":"handler: operation stats","stats":{"operations":[{"desc":"uploading output.log","runtime_seconds":0.58590325,"progress":"309B/309B"},{"desc":"uploading wandb-summary.json","runtime_seconds":0.585896658,"progress":"159B/159B"},{"desc":"uploading config.yaml","runtime_seconds":0.337846849,"progress":"621B/621B"}],"total_operations":3}}
+{"time":"2025-03-07T17:33:48.446291795Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-03-07T17:33:48.733361883Z","level":"INFO","msg":"stream: closing","id":"irvokw2g"}
+{"time":"2025-03-07T17:33:48.733673099Z","level":"INFO","msg":"handler: closed","stream_id":"irvokw2g"}
+{"time":"2025-03-07T17:33:48.733693176Z","level":"INFO","msg":"writer: Close: closed","stream_id":"irvokw2g"}
+{"time":"2025-03-07T17:33:48.733748989Z","level":"INFO","msg":"sender: closed","stream_id":"irvokw2g"}
+{"time":"2025-03-07T17:33:48.740901067Z","level":"INFO","msg":"stream: closed","id":"irvokw2g"}

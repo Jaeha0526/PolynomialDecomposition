@@ -3,4 +3,5 @@ datasets
 transformers
 tiktoken
 matplotlib
+wandb
 gradescope-utils==0.5.0
