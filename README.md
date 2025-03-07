@@ -1,4 +1,4 @@
-# Inequality
+# Recognizing Polynomial Substructure
 
 This repository contains code and resources for the paper "RECOGNIZING SUBSTRUCTURES IN MULTIVARIABLE POLYNOMIALS VIA TRANSFORMERS". Our research explores the potential of transformer models to recognize substructures within polynomials.
 
