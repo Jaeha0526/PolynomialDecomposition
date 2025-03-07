@@ -28,7 +28,7 @@ JF$ParseSymbol[symbol[sym_]]:=symbol[sym]/.symbol[str_String]/;StringMatchQ[str,
 
 JF$Parser[line_String]:=Module[{result,tail},
 {result,tail}=JFP$Read[JF$Tokenize[line]];
-If[Length@tail!=0,Print["JaehaFormat$Parser failure : tail=!={}"];Abort[]];
+If[Length@tail!=0,Print["JFormat$Parser failure : tail=!={}"];Abort[]];
 result/.{
 head["+"]:>Plus,head["*"]:>Times,head["^"]:>Power,s_symbol:>JF$ParseSymbol[s]}
 ];

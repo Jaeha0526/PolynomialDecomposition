@@ -34,7 +34,7 @@ error=Catch[
 {result,tail}=JFP$Read[JF$Tokenize[line]]
 ];
 If[MatchQ[error,Error[__]],Return[False]];
-If[Length@tail!=0,Print["JaehaFormat$Parser failure : tail=!={}"];Return[False]];
+If[Length@tail!=0,Print["JFormat$Parser failure : tail=!={}"];Return[False]];
 result/.{
 head["+"]:>Plus,head["*"]:>Times,head["^"]:>Power,s_symbol:>JF$ParseSymbol$a[s]}/.{s_symbol:>JF$ParseSymbol$b[s]}
 ];
