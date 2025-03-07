@@ -1,0 +1,579 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 10.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[     19812,        571]
+NotebookOptionsPosition[     17623,        511]
+NotebookOutlinePosition[     18027,        528]
+CellTagsIndexPosition[     17984,        525]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell["Txt to MMA", "Section",
+ CellChangeTimes->{{3.828161936786806*^9, 3.8281619415670633`*^9}, {
+  3.928718969127046*^9, 3.9287189778105106`*^9}, {3.9291162159888086`*^9, 
+  3.929116218625823*^9}},ExpressionUUID->"47ea2f20-16d1-44f4-bbab-\
+2e696ef77cb0"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"JF$Tokenize", "[", "line_String", "]"}], ":=", 
+   RowBox[{
+    RowBox[{"StringSplit", "[", 
+     RowBox[{
+      RowBox[{"StringReplace", "[", 
+       RowBox[{"line", ",", 
+        RowBox[{"{", 
+         RowBox[{
+          RowBox[{"\"\<P \>\"", "\[RuleDelayed]", "\"\<P\>\""}], ",", 
+          RowBox[{"\"\<N \>\"", "\[RuleDelayed]", "\"\<N\>\""}], ",", 
+          RowBox[{"\"\< ~ \>\"", "\[RuleDelayed]", "\"\<~\>\""}], ",", 
+          RowBox[{"\"\< ~\>\"", "\[RuleDelayed]", "\"\<~\>\""}], ",", 
+          RowBox[{"\"\<~ \>\"", "\[RuleDelayed]", "\"\<~\>\""}]}], "}"}]}], 
+       "]"}], ",", "\"\< \>\""}], "]"}], "/.", 
+    RowBox[{"{", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"a_String", "/;", 
+        RowBox[{"StringMatchQ", "[", 
+         RowBox[{"a", ",", "NumberString"}], "]"}]}], "\[RuleDelayed]", 
+       RowBox[{"ToExpression", "[", "a", "]"}]}], ",", "\[IndentingNewLine]", 
+      RowBox[{
+       RowBox[{"str_String", "/;", 
+        RowBox[{"StringMatchQ", "[", 
+         RowBox[{"str", ",", 
+          RowBox[{"\"\<a\>\"", "~~", 
+           RowBox[{"(", 
+            RowBox[{"DigitCharacter", "..."}], ")"}]}]}], "]"}]}], 
+       "\[RuleDelayed]", 
+       RowBox[{"symbol", "[", "str", "]"}]}]}], "\[IndentingNewLine]", 
+     "}"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"JF$ParseSymbol", "[", 
+    RowBox[{"symbol", "[", "sym_", "]"}], "]"}], ":=", 
+   RowBox[{
+    RowBox[{"symbol", "[", "sym", "]"}], "/.", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"symbol", "[", "str_String", "]"}], "/;", 
+      RowBox[{"StringMatchQ", "[", 
+       RowBox[{"str", ",", 
+        RowBox[{"\"\<a\>\"", "~~", 
+         RowBox[{"(", 
+          RowBox[{"DigitCharacter", "..."}], ")"}]}]}], "]"}]}], 
+     "\[RuleDelayed]", 
+     RowBox[{"a", "[", 
+      RowBox[{"ToExpression", "[", 
+       RowBox[{"StringTake", "[", 
+        RowBox[{"str", ",", 
+         RowBox[{"2", ";;", 
+          RowBox[{"-", "1"}]}]}], "]"}], "]"}], "]"}]}]}]}], ";"}]}], "Code",
+ CellChangeTimes->{{3.9279408478724055`*^9, 3.927940892191735*^9}, {
+  3.927940924283122*^9, 3.9279409985690327`*^9}, {3.928002077946669*^9, 
+  3.928002091978202*^9}},ExpressionUUID->"213b2a8d-6326-43af-ba8e-\
+dbd584dfb4c2"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"JF$Parser", "[", "line_String", "]"}], ":=", 
+   RowBox[{"Module", "[", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"result", ",", "tail", ",", "error"}], "}"}], ",", 
+     "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"error", "=", 
+       RowBox[{"Catch", "[", "\[IndentingNewLine]", 
+        RowBox[{
+         RowBox[{"{", 
+          RowBox[{"result", ",", "tail"}], "}"}], "=", 
+         RowBox[{"JFP$Read", "[", 
+          RowBox[{"JF$Tokenize", "[", "line", "]"}], "]"}]}], 
+        "\[IndentingNewLine]", "]"}]}], ";", "\[IndentingNewLine]", 
+      RowBox[{"If", "[", 
+       RowBox[{
+        RowBox[{"MatchQ", "[", 
+         RowBox[{"error", ",", 
+          RowBox[{"Error", "[", "__", "]"}]}], "]"}], ",", 
+        RowBox[{"Return", "[", "False", "]"}]}], "]"}], ";", 
+      "\[IndentingNewLine]", 
+      RowBox[{"If", "[", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"Length", "@", "tail"}], "\[NotEqual]", "0"}], ",", 
+        RowBox[{
+         RowBox[{
+         "Print", "[", "\"\<JaehaFormat$Parser failure : tail=!={}\>\"", 
+          "]"}], ";", 
+         RowBox[{"Return", "[", "False", "]"}]}]}], "]"}], ";", 
+      "\[IndentingNewLine]", 
+      RowBox[{"result", "/.", 
+       RowBox[{"{", "\[IndentingNewLine]", 
+        RowBox[{
+         RowBox[{
+          RowBox[{"head", "[", "\"\<+\>\"", "]"}], "\[RuleDelayed]", "Plus"}],
+          ",", 
+         RowBox[{
+          RowBox[{"head", "[", "\"\<*\>\"", "]"}], "\[RuleDelayed]", 
+          "Times"}], ",", 
+         RowBox[{
+          RowBox[{"head", "[", "\"\<^\>\"", "]"}], "\[RuleDelayed]", 
+          "Power"}], ",", 
+         RowBox[{"s_symbol", "\[RuleDelayed]", 
+          RowBox[{"JF$ParseSymbol", "[", "s", "]"}]}]}], "}"}]}]}]}], 
+    "\[IndentingNewLine]", "]"}]}], ";"}]], "Code",
+ CellChangeTimes->{{3.9279409746938653`*^9, 3.9279410105558558`*^9}, 
+   3.928020558077053*^9, {3.9280205934363956`*^9, 3.928020659109109*^9}, {
+   3.929116626965799*^9, 
+   3.929116627424886*^9}},ExpressionUUID->"358139f3-5374-455b-b854-\
+3f963107cf05"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"Clear", "[", 
+   RowBox[{"JFP$Read", ",", "JFP$ReadN", ",", "head"}], "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"JFP$ReadN", "[", 
+    RowBox[{
+     RowBox[{"n_", "/;", 
+      RowBox[{"n", ">", "0"}]}], ",", "list_List"}], "]"}], ":=", 
+   RowBox[{"Module", "[", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"term1", ",", "tail", ",", "termrest"}], "}"}], ",", 
+     "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"If", "[", 
+       RowBox[{
+        RowBox[{"list", "===", 
+         RowBox[{"{", "}"}]}], ",", 
+        RowBox[{
+         RowBox[{
+         "Print", "[", "\"\<JFP$ReadN wrong : can't read term from {}\>\"", 
+          "]"}], ";", 
+         RowBox[{"Throw", "[", 
+          RowBox[{"Error", "[", "\"\<NoTerm\>\"", "]"}], "]"}], ";"}]}], 
+       "]"}], ";", "\[IndentingNewLine]", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"term1", ",", "tail"}], "}"}], "=", 
+       RowBox[{"JFP$Read", "[", "list", "]"}]}], ";", "\[IndentingNewLine]", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"termrest", ",", "tail"}], "}"}], "=", 
+       RowBox[{"JFP$ReadN", "[", 
+        RowBox[{
+         RowBox[{"n", "-", "1"}], ",", "tail"}], "]"}]}], ";", 
+      "\[IndentingNewLine]", 
+      RowBox[{"{", 
+       RowBox[{
+        RowBox[{"Prepend", "[", 
+         RowBox[{"termrest", ",", "term1"}], "]"}], ",", "tail"}], "}"}]}]}], 
+    "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"JFP$ReadN", "[", 
+     RowBox[{"0", ",", "list_List"}], "]"}], ":=", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", "}"}], ",", "list"}], "}"}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"JFP$ReadNum", "[", "str_String", "]"}], ":=", 
+    RowBox[{"Module", "[", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"list", ",", "sign"}], "}"}], ",", "\[IndentingNewLine]", 
+      RowBox[{
+       RowBox[{"list", "=", 
+        RowBox[{"StringSplit", "[", 
+         RowBox[{"str", ",", "\"\<~\>\""}], "]"}]}], ";", 
+       "\[IndentingNewLine]", 
+       RowBox[{"sign", "=", 
+        RowBox[{
+         RowBox[{"list", "[", 
+          RowBox[{"[", "1", "]"}], "]"}], "/.", 
+         RowBox[{"{", 
+          RowBox[{
+           RowBox[{"\"\<P\>\"", "\[Rule]", "1"}], ",", 
+           RowBox[{"\"\<N\>\"", "\[Rule]", 
+            RowBox[{"-", "1"}]}]}], "}"}]}]}], ";", "\[IndentingNewLine]", 
+       RowBox[{"list", "=", 
+        RowBox[{
+         RowBox[{"list", "[", 
+          RowBox[{"[", 
+           RowBox[{"2", ";;", 
+            RowBox[{"-", "1"}]}], "]"}], "]"}], "/.", 
+         RowBox[{"d_String", "\[RuleDelayed]", 
+          RowBox[{"ToExpression", "[", "d", "]"}]}]}]}], ";", 
+       "\[IndentingNewLine]", 
+       RowBox[{"sign", " ", 
+        RowBox[{"FromDigits", "[", 
+         RowBox[{"list", ",", "100"}], "]"}]}]}]}], "\[IndentingNewLine]", 
+     "]"}]}], ";"}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"JFP$NumQ", "[", "str_String", "]"}], ":=", 
+    RowBox[{"StringMatchQ", "[", 
+     RowBox[{"str", ",", 
+      RowBox[{
+       RowBox[{"(", 
+        RowBox[{"\"\<P\>\"", "|", "\"\<N\>\""}], ")"}], "~~", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{"\"\<~\>\"", "~~", 
+          RowBox[{"(", 
+           RowBox[{"DigitCharacter", ".."}], ")"}]}], ")"}], ".."}]}]}], 
+     "]"}]}], ";"}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"JFP$Read", "[", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"numstr_String", "/;", 
+       RowBox[{"JFP$NumQ", "[", "numstr", "]"}]}], ",", "rest___"}], "}"}], 
+    "]"}], ":=", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"JFP$ReadNum", "[", "numstr", "]"}], ",", 
+     RowBox[{"{", "rest", "}"}]}], "}"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"JFP$Read", "[", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"symbol", "[", "sym_", "]"}], ",", "rest___"}], "}"}], "]"}], ":=", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"symbol", "[", "sym", "]"}], ",", 
+     RowBox[{"{", "rest", "}"}]}], "}"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"JFP$Read", "[", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"op", ":", 
+        RowBox[{"(", 
+         RowBox[{"\"\<+\>\"", "|", "\"\<*\>\"", "|", "\"\<^\>\""}], ")"}]}], 
+       ",", "rest___"}], "}"}], "]"}], ":=", 
+    RowBox[{"Module", "[", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"t1", ",", "t2", ",", "tail"}], "}"}], ",", 
+      "\[IndentingNewLine]", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"{", 
+         RowBox[{
+          RowBox[{"{", 
+           RowBox[{"t1", ",", "t2"}], "}"}], ",", "tail"}], "}"}], "=", 
+        RowBox[{"JFP$ReadN", "[", 
+         RowBox[{"2", ",", 
+          RowBox[{"{", "rest", "}"}]}], "]"}]}], ";", "\[IndentingNewLine]", 
+       RowBox[{"{", 
+        RowBox[{
+         RowBox[{
+          RowBox[{"head", "[", "op", "]"}], "[", 
+          RowBox[{"t1", ",", "t2"}], "]"}], ",", "tail"}], "}"}]}]}], 
+     "\[IndentingNewLine]", "]"}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"JFP$Read", "[", "errterm_", "]"}], ":=", 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{
+    "Print", "[", "\"\<JFP$Read wrong : can't read term from {}\>\"", "]"}], 
+    ";", 
+    RowBox[{"Throw", "[", 
+     RowBox[{"Error", "[", 
+      RowBox[{"\"\<JFP$Read failure : \>\"", ",", "errterm"}], "]"}], "]"}], 
+    ";"}], ")"}]}]}], "Code",
+ CellChangeTimes->CompressedData["
+1:eJwd0F1IU3EYBvDtLN3CC13twuaMqVOW4YjcqDRpm6t5kRiByk6wTDiMAh3i
+GbGOiOBYJNOtixS1ugglpFIQNa2LWRc2WMxBxoyUYkEfrrm5TfwIRuf5X7z8
+eJ7n7i1pt19nKIFAUM4f7M0EP23Xxw1U7sPPUGsuisGK3h5iaNmWhBJ3wy4M
+zN87hCu2tizJ1Jg0wTsXrpXBzOV0Eby2+k8Jn7UeLYe+dUZN+j9lGvh6Zqga
+Vnk5Pey0is1w/aPMAldrIjYYPi3pgOqLqrtQfLOCg4/23xLb9PTWDm/snCIB
+ddY3BzBpfp+FliOmwhTvjbBRDkVe71VIPTC2wIKaAA03mr4To8WaW3BgS+uE
+8xeST2Hhi9uTcE90/x38Gwmtwaz691dYqRyRpPEHVU43XGgu6IPfdINumDc3
+TZQ2PvdAd09kEHpeXRqBv2j/BNyf7psi+xK3AU3K/ojUFDdMpR8TU5zrJ/T/
+qNuGw4tBy3HekFxBw0V2k4VnK3Md0N1Sxsh5rcJTd6CMnmRhNBF0wNn8D6Mw
+3jU6DjVXfCvwZfswUfXkxBfoKaWJZ1x+u4K3Ye8YC4UHjBOeDJ7n4H9v1TIE
+
+  "],ExpressionUUID->"9c2e4534-014a-4484-bba6-4b45869d3a3a"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"JF$Parser", "[", "longtxt", "]"}]], "Input",ExpressionUUID->"31892fe4-8ca3-4e0a-baff-c4ffaa8cc6f3"],
+
+Cell[BoxData["\<\"JFP$Read wrong : can't read term from {}\"\>"], "Print",
+ CellChangeTimes->{
+  3.9291168249777775`*^9},ExpressionUUID->"0c160150-651a-4323-970e-\
+bd7ce8356e2a"],
+
+Cell[BoxData["False"], "Output",
+ CellChangeTimes->{
+  3.929116824980769*^9},ExpressionUUID->"9c883425-73c5-419a-9902-\
+d1ff8f9c2180"]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["MMA to Txt", "Section",
+ CellChangeTimes->{{3.828161936786806*^9, 3.8281619415670633`*^9}, {
+  3.928718969127046*^9, 
+  3.9287189778105106`*^9}},ExpressionUUID->"887b1e4b-beeb-4de9-a277-\
+8ea25dbc3d92"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"MMAExprToJFString$NumberFormat", "[", "num_Integer", "]"}], ":=", 
+   RowBox[{
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"If", "[", 
+       RowBox[{
+        RowBox[{"num", ">", "0"}], ",", "\"\<P\>\"", ",", "\"\<N\>\""}], 
+       "]"}], ",", "\"\<~\>\""}], "}"}], "~", "Join", "~", 
+    RowBox[{"Riffle", "[", 
+     RowBox[{
+      RowBox[{"IntegerDigits", "[", 
+       RowBox[{"num", ",", "100"}], "]"}], ",", "\"\<~\>\""}], "]"}]}]}], 
+  ";"}]], "Code",
+ CellChangeTimes->{{3.92911733750202*^9, 
+  3.929117364988529*^9}},ExpressionUUID->"2eed2a31-72e2-46e3-9693-\
+31b93dfb705c"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"MMAExprToJFString", "[", "expr_", "]"}], ":=", 
+   RowBox[{"Module", "[", 
+    RowBox[{
+     RowBox[{"{", "}"}], ",", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{
+       RowBox[{
+        RowBox[{
+         RowBox[{
+          RowBox[{"ToPrefixNotation", "[", "expr", "]"}], "/.", 
+          RowBox[{"{", "\[IndentingNewLine]", 
+           RowBox[{
+            RowBox[{"{", 
+             RowBox[{"a", ",", "i_"}], "}"}], "\[RuleDelayed]", 
+            RowBox[{"{", 
+             RowBox[{"\"\<a\>\"", "<>", 
+              RowBox[{"ToString", "[", "i", "]"}]}], "}"}]}], 
+           "\[IndentingNewLine]", "}"}]}], "/.", 
+         RowBox[{"{", 
+          RowBox[{
+           RowBox[{"Plus", "\[Rule]", "\"\<+\>\""}], ",", 
+           RowBox[{"Power", "\[Rule]", "\"\<^\>\""}], ",", 
+           RowBox[{"Times", "\[Rule]", "\"\<*\>\""}]}], "}"}]}], "/.", 
+        RowBox[{"{", 
+         RowBox[{"a_Integer", ":>", 
+          RowBox[{"MMAExprToJFString$NumberFormat", "[", "a", "]"}]}], 
+         "}"}]}], "//", "Flatten"}], "//", "StringRiffle"}]}], 
+    "\[IndentingNewLine]", "]"}]}], ";"}]], "Code",
+ CellChangeTimes->{{3.9291166938522143`*^9, 3.9291167548342576`*^9}, {
+  3.9291173785524645`*^9, 
+  3.929117380379323*^9}},ExpressionUUID->"35f3b699-78dd-4e1e-9d82-\
+d77e76180234"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"{", 
+   RowBox[{"long", ",", "short", ",", "sub"}], "}"}], "=", 
+  RowBox[{"RandomPolynomial$ON$LSS", "[", 
+   RowBox[{"5", ",", "3", ",", "2", ",", "3", ",", "ComplexityCriteria"}], 
+   "]"}]}]], "Input",
+ CellChangeTimes->{{3.929116341044076*^9, 
+  3.9291163452190633`*^9}},ExpressionUUID->"32a5ca9a-ccf8-423e-8c6f-\
+1b66c34ff4c0"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"4", "-", 
+    RowBox[{"2", " ", 
+     SuperscriptBox[
+      RowBox[{"a", "[", "1", "]"}], "2"]}], "+", 
+    SuperscriptBox[
+     RowBox[{"a", "[", "1", "]"}], "4"], "-", 
+    RowBox[{"2", " ", 
+     SuperscriptBox[
+      RowBox[{"a", "[", "2", "]"}], "2"]}], "+", 
+    RowBox[{"2", " ", 
+     SuperscriptBox[
+      RowBox[{"a", "[", "1", "]"}], "2"], " ", 
+     SuperscriptBox[
+      RowBox[{"a", "[", "2", "]"}], "2"]}], "+", 
+    SuperscriptBox[
+     RowBox[{"a", "[", "2", "]"}], "4"]}], ",", 
+   RowBox[{"4", "-", 
+    RowBox[{"2", " ", "s"}], "+", 
+    SuperscriptBox["s", "2"]}], ",", 
+   RowBox[{
+    SuperscriptBox[
+     RowBox[{"a", "[", "1", "]"}], "2"], "+", 
+    SuperscriptBox[
+     RowBox[{"a", "[", "2", "]"}], "2"]}]}], "}"}]], "Output",
+ CellChangeTimes->{{3.9291162377065496`*^9, 3.929116254532716*^9}, 
+   3.9291163474674253`*^9, 
+   3.9291167579303656`*^9},ExpressionUUID->"0492e0fa-a2a5-426b-b82e-\
+aef531920e6e"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"longtxt", "=", 
+  RowBox[{"long", "//", "MMAExprToJFString"}]}]], "Input",
+ CellChangeTimes->{{3.929116354352866*^9, 3.9291163639868393`*^9}, {
+  3.929116515907817*^9, 
+  3.929116524177783*^9}},ExpressionUUID->"eaddc0fe-eb2c-4dca-a881-\
+1d850321566b"],
+
+Cell[BoxData["\<\"+ P ~ 4 + * N ~ 2 ^ a1 P ~ 2 + ^ a1 P ~ 4 + * N ~ 2 ^ a2 P \
+~ 2 + * P ~ 2 * ^ a1 P ~ 2 ^ a2 P ~ 2 ^ a2 P ~ 4\"\>"], "Output",
+ CellChangeTimes->{{3.9291163550371203`*^9, 3.9291163644285016`*^9}, {
+   3.9291165165169783`*^9, 3.9291165245571923`*^9}, 3.929116759088255*^9, 
+   3.929116816924081*^9, 
+   3.9291173878724985`*^9},ExpressionUUID->"b20c2dcb-b13f-4dfc-85aa-\
+0bc903396275"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{"JF$Parser", "[", "longtxt", "]"}], "\[IndentingNewLine]", 
+ RowBox[{"%", "-", "long"}]}], "Input",
+ CellChangeTimes->{{3.9291163746164117`*^9, 3.929116388366393*^9}, {
+  3.9291165283324223`*^9, 
+  3.92911652953326*^9}},ExpressionUUID->"8e7b3746-0089-4467-b405-\
+7f6cdf9bbd29"],
+
+Cell[BoxData[
+ RowBox[{"4", "-", 
+  RowBox[{"2", " ", 
+   SuperscriptBox[
+    RowBox[{"a", "[", "1", "]"}], "2"]}], "+", 
+  SuperscriptBox[
+   RowBox[{"a", "[", "1", "]"}], "4"], "-", 
+  RowBox[{"2", " ", 
+   SuperscriptBox[
+    RowBox[{"a", "[", "2", "]"}], "2"]}], "+", 
+  RowBox[{"2", " ", 
+   SuperscriptBox[
+    RowBox[{"a", "[", "1", "]"}], "2"], " ", 
+   SuperscriptBox[
+    RowBox[{"a", "[", "2", "]"}], "2"]}], "+", 
+  SuperscriptBox[
+   RowBox[{"a", "[", "2", "]"}], "4"]}]], "Output",
+ CellChangeTimes->{{3.92911637537747*^9, 3.929116388725184*^9}, 
+   3.929116530309495*^9, {3.9291167609208417`*^9, 3.929116778524014*^9}, 
+   3.9291173903364034`*^9},ExpressionUUID->"cdd74d63-1f34-439d-9049-\
+859e26188ac2"],
+
+Cell[BoxData["0"], "Output",
+ CellChangeTimes->{{3.92911637537747*^9, 3.929116388725184*^9}, 
+   3.929116530309495*^9, {3.9291167609208417`*^9, 3.929116778524014*^9}, 
+   3.9291173903388567`*^9},ExpressionUUID->"4c04e249-e314-497b-916a-\
+605f61613e0e"]
+}, Open  ]]
+}, Open  ]]
+},
+AutoGeneratedPackage->Automatic,
+WindowSize->{1280, 555},
+WindowMargins->{{-8, Automatic}, {Automatic, -8}},
+Magnification:>1. Inherited,
+FrontEndVersion->"11.1 for Microsoft Windows (64-bit) (May 16, 2017)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 256, 4, 70, "Section", "ExpressionUUID" -> \
+"47ea2f20-16d1-44f4-bbab-2e696ef77cb0"],
+Cell[839, 28, 2284, 58, 123, "Code", "ExpressionUUID" -> \
+"213b2a8d-6326-43af-ba8e-dbd584dfb4c2"],
+Cell[3126, 88, 2080, 54, 195, "Code", "ExpressionUUID" -> \
+"358139f3-5374-455b-b854-3f963107cf05"],
+Cell[5209, 144, 6282, 179, 503, "Code", "ExpressionUUID" -> \
+"9c2e4534-014a-4484-bba6-4b45869d3a3a"],
+Cell[CellGroupData[{
+Cell[11516, 327, 123, 1, 30, "Input", "ExpressionUUID" -> \
+"31892fe4-8ca3-4e0a-baff-c4ffaa8cc6f3"],
+Cell[11642, 330, 178, 3, 22, "Print", "ExpressionUUID" -> \
+"0c160150-651a-4323-970e-bd7ce8356e2a"],
+Cell[11823, 335, 134, 3, 30, "Output", "ExpressionUUID" -> \
+"9c883425-73c5-419a-9902-d1ff8f9c2180"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[12006, 344, 208, 4, 70, "Section", "ExpressionUUID" -> \
+"887b1e4b-beeb-4de9-a277-8ea25dbc3d92"],
+Cell[12217, 350, 630, 18, 50, "Code", "ExpressionUUID" -> \
+"2eed2a31-72e2-46e3-9693-31b93dfb705c"],
+Cell[12850, 370, 1332, 34, 123, "Code", "ExpressionUUID" -> \
+"35f3b699-78dd-4e1e-9d82-d77e76180234"],
+Cell[CellGroupData[{
+Cell[14207, 408, 368, 9, 30, "Input", "ExpressionUUID" -> \
+"32a5ca9a-ccf8-423e-8c6f-1b66c34ff4c0"],
+Cell[14578, 419, 986, 30, 34, "Output", "ExpressionUUID" -> \
+"0492e0fa-a2a5-426b-b82e-aef531920e6e"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[15601, 454, 275, 6, 30, "Input", "ExpressionUUID" -> \
+"eaddc0fe-eb2c-4dca-a881-1d850321566b"],
+Cell[15879, 462, 401, 6, 30, "Output", "ExpressionUUID" -> \
+"b20c2dcb-b13f-4dfc-85aa-0bc903396275"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[16317, 473, 301, 6, 50, "Input", "ExpressionUUID" -> \
+"8e7b3746-0089-4467-b405-7f6cdf9bbd29"],
+Cell[16621, 481, 719, 20, 30, "Output", "ExpressionUUID" -> \
+"cdd74d63-1f34-439d-9049-859e26188ac2"],
+Cell[17343, 503, 252, 4, 30, "Output", "ExpressionUUID" -> \
+"4c04e249-e314-497b-916a-605f61613e0e"]
+}, Open  ]]
+}, Open  ]]
+}
+]
+*)
+
