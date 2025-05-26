@@ -210,6 +210,43 @@ def generate_dataset_line(degree1=None, degree2=None, debug=False):
 
     return line, (poly1, poly2, expanded_result)
 
+
+# Generate 1M training dataset and 9 test datasets in the file_directory
+def generate_expressions_for_degrees(degree1, degree2, num_samples, seen_expressions=None):
+    """Generate unique expressions for specific degrees."""
+    if seen_expressions is None:
+        seen_expressions = set()
+
+    expressions = []
+    attempts = 0
+    max_attempts = num_samples * 10
+
+    print(f"  Generating expressions for degrees ({degree1}, {degree2})...")
+
+    while len(expressions) < num_samples and attempts < max_attempts:
+        try:
+            line, (poly1, poly2, result) = generate_dataset_line(degree1, degree2)
+
+            # Create a unique identifier for this expression combination
+            expr_id = (str(poly1), str(poly2))
+
+            if expr_id not in seen_expressions:
+                seen_expressions.add(expr_id)
+                expressions.append((line, expr_id, degree1, degree2))
+
+                if len(expressions) % 1000 == 0:
+                    print(f"    Generated {len(expressions)}/{num_samples} expressions...")
+
+            attempts += 1
+
+        except Exception as e:
+            attempts += 1
+            continue
+
+    return expressions, seen_expressions
+
+
+
 def generate_all_datasets(file_directory="datasets", num_train=100000, num_test=3000, num_valid=128):
     """Generate all training and test datasets ensuring no overlap."""
     seen_expressions = set()
@@ -257,16 +294,16 @@ def generate_all_datasets(file_directory="datasets", num_train=100000, num_test=
 
         while len(all_expressions) < training_target and attempts < max_attempts:
             try:
-                line, (poly1, poly2, result) = generate_dataset_line()  # Random degrees
+                # Use random degrees for training
+                deg1 = random.choice([2, 3, 4])
+                deg2 = random.choice([2, 3, 4]) 
+                line, (poly1, poly2, result) = generate_dataset_line(degree1=deg1, degree2=deg2)  # Random degrees
 
                 # Create a unique identifier for this expression combination
                 expr_id = (str(poly1), str(poly2))
 
                 if expr_id not in seen_expressions:
                     seen_expressions.add(expr_id)
-                    # Use random degrees for training
-                    deg1 = random.choice([2, 3, 4])
-                    deg2 = random.choice([2, 3, 4])
                     all_expressions.append((line, expr_id, deg1, deg2))
 
                     if len(all_expressions) % 10000 == 0:
