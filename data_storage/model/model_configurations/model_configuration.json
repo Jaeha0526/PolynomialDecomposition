@@ -2,8 +2,8 @@
   "model_name": "single_variable_model_best.pt",
   "block_size": 350,
   "n_layer": 6,
-  "n_head": 8,
+  "n_head": 4,
   "n_embd": 512,
-  "MAX_NUMBER_TOKEN": 10,
+  "MAX_NUMBER_TOKEN": 101,
   "check_file": "check.m"
 }

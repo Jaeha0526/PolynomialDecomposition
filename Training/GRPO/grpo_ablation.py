@@ -21,15 +21,16 @@ import math
 # Add project root to sys.path
 current_file = Path(__file__).resolve()
 project_root = current_file.parents[1]  # Go two levels up from grpo_ablation.py
+print(f"Project Root: {project_root}")
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 # Import the custom model definition and the new loader
 try:
-    from Training.mingpt.model import GPT
-    from Training.mingpt.model_loader import load_model_and_tokenizer, load_model_and_tokenizer_from_checkpoint
+    from mingpt.model import GPT
+    from mingpt.model_loader import load_model_and_tokenizer, load_model_and_tokenizer_from_checkpoint
     # from nanogpt_from_CS148.nanogpt.utils import call_mathematica, LLM_BeamSearch_check # Commented out call_mathematica
-    from Training.mingpt.utils import LLM_BeamSearch_check # Keep LLM_BeamSearch_check if needed
+    from mingpt.utils import LLM_BeamSearch_check # Keep LLM_BeamSearch_check if needed
     print("Successfully imported custom nanogpt model, loader, and utils.")
 except ImportError as e:
     print(f"Error importing nanogpt components: {e}")
@@ -76,8 +77,8 @@ args = parse_args()
 CONFIG_NAME = args.config_name
 MODEL_DIR_NAME = 'models'  # Directory containing the .pt file
 
-config_path = project_root / 'data_storage' / 'model' / 'model_configuration' / CONFIG_NAME
-model_dir_path = project_root / 'data_storage' / 'model'
+config_path = project_root / '..' / 'data_storage' / 'model' / 'model_configurations' / CONFIG_NAME
+model_dir_path = project_root / '..' / 'data_storage' / 'model'
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Load check_file name from JSON config
@@ -461,7 +462,7 @@ def create_symbolic_expression_prompts(num_prompts: int, filepath: str = None, s
     """
     Create prompts for generating symbolic expressions, ending with the mask token.
     If filepath is provided, reads from file and randomly selects lines.
-    Each line is processed to take only the part before the question mark and add "??" at the end.
+    Each line is processed to take only the part before the question mark and add "⁇" at the end.
 
     Args:
         num_prompts: Number of prompts to generate
@@ -477,14 +478,14 @@ def create_symbolic_expression_prompts(num_prompts: int, filepath: str = None, s
         with open(filepath, 'r') as f:
             all_lines = f.readlines()
 
-        # Process each line: take part before question mark and add "??"
+        # Process each line: take part before question mark and add "⁇"
         processed_lines = []
         for line in all_lines:
             line = line.strip()
-            if '?' in line:
+            if '⁇' in line:
                 # Take only the part before the question mark
-                prompt = line.split('?')[0].strip()
-                # Add "??" at the end
+                prompt = line.split('⁇')[0].strip()
+                # Add "⁇" at the end
                 prompt = prompt + " ⁇"
                 processed_lines.append(prompt)
 
@@ -606,13 +607,13 @@ print("GRPO config initialized")
 print(f"Weights & Biases logging is {'disabled' if args.disable_wandb else 'enabled'}")
 
 # Update the dataset path
-dataset_dir_path = project_root / "datasets" / "data3_easy_123.txt"
+dataset_dir_path = project_root / ".." / "data_storage" / "dataset" / "single_variable" / "training_dataset.txt"
 # dataset_dir_path = project_root / "processed_datasets" / "data3_easy_123.txt"
 if args.dataset_path:
     dataset_dir_path = Path(args.dataset_path)
 
 # Read the existing configuration file
-config_path = project_root / 'model_configurations' / CONFIG_NAME
+config_path = project_root / '..' / 'data_storage' / 'model' / 'model_configurations' / CONFIG_NAME
 if not config_path.is_file():
     raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
