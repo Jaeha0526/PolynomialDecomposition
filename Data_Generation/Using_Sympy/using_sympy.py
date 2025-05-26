@@ -179,3 +179,33 @@ def parse_prefix_to_sympy(tokens: List[str]) -> sp.Expr:
         raise ValueError(f"Invalid prefix expression: stack size is {len(stack)} at the end, expected 1. Stack: {stack}")
     return stack[0]
 
+
+def generate_dataset_line(degree1=None, degree2=None, debug=False):
+    """Generate one line of the dataset."""
+    a = sp.Symbol('a')
+    b = sp.Symbol('b')
+
+    poly1 = generate_random_polynomial(b, degree1)
+    poly2 = generate_random_polynomial(a, degree2)
+    if debug:
+      print(f"Outer polynomial: {poly1}")
+      print(f"Inner polynomial: {poly2}")
+
+    # Substitute poly2 into poly1
+    substituted = poly1.subs(b, poly2)
+    expanded_result = sp.expand(substituted)
+    if debug:
+      print(f"Substituted: {substituted}")
+      print(f"Expanded: {expanded_result}")
+
+    # Convert to tokenized prefix form
+    result_tokens = polynomial_to_prefix_tokens(expanded_result, a)
+    poly1_tokens = polynomial_to_prefix_tokens(poly1, b)
+    poly2_tokens = polynomial_to_prefix_tokens(poly2, a)
+
+    # Format the line
+    line = f"{result_tokens} ? {poly1_tokens} & {poly2_tokens}"
+    if debug:
+      print(f"Result: {line}")
+
+    return line, (poly1, poly2, expanded_result)
