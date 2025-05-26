@@ -209,3 +209,119 @@ def generate_dataset_line(degree1=None, degree2=None, debug=False):
       print(f"Result: {line}")
 
     return line, (poly1, poly2, expanded_result)
+
+def generate_all_datasets(file_directory="datasets", num_train=100000, num_test=3000, num_valid=128):
+    """Generate all training and test datasets ensuring no overlap."""
+    seen_expressions = set()
+    all_expressions = []
+    test_expressions = {}
+
+    # Define all degree combinations for test sets
+    degree_combinations = [
+        (2, 2), (2, 3), (2, 4),
+        (3, 2), (3, 3), (3, 4),
+        (4, 2), (4, 3), (4, 4)
+    ]
+
+    print("Step 1: Generating expressions for test datasets...")
+
+    # Generate expressions for each test dataset (extra samples to ensure we have enough)
+    for deg1, deg2 in degree_combinations:
+        expressions, seen_expressions = generate_expressions_for_degrees(
+            deg1, deg2, 2*num_test, seen_expressions  # Generate extra
+        )
+
+        # Take first num_test for test set
+        test_expressions[(deg1, deg2)] = expressions[:num_test]
+
+        # Add remaining to training pool
+        if len(expressions) > num_test:
+            all_expressions.extend(expressions[num_test:])
+
+        print(f"  Test set ({deg1}, {deg2}): {len(test_expressions[(deg1, deg2)])} samples")
+        print(f"  Added {len(expressions) - num_test} extra samples to training pool")
+
+    print(f"\nStep 2: Generating additional training data...")
+    print(f"Current training pool size: {len(all_expressions)}")
+
+    # Generate additional random expressions for training until we reach 1M
+    training_target = num_train + num_valid
+    current_training_size = len(all_expressions)
+    additional_needed = training_target - current_training_size
+
+    if additional_needed > 0:
+        print(f"Generating {additional_needed} additional training expressions...")
+
+        attempts = 0
+        max_attempts = additional_needed * 5
+
+        while len(all_expressions) < training_target and attempts < max_attempts:
+            try:
+                line, (poly1, poly2, result) = generate_dataset_line()  # Random degrees
+
+                # Create a unique identifier for this expression combination
+                expr_id = (str(poly1), str(poly2))
+
+                if expr_id not in seen_expressions:
+                    seen_expressions.add(expr_id)
+                    # Use random degrees for training
+                    deg1 = random.choice([2, 3, 4])
+                    deg2 = random.choice([2, 3, 4])
+                    all_expressions.append((line, expr_id, deg1, deg2))
+
+                    if len(all_expressions) % 10000 == 0:
+                        print(f"  Training pool size: {len(all_expressions)}/{training_target}")
+
+                attempts += 1
+
+            except Exception as e:
+                attempts += 1
+                continue
+
+    print(f"\nStep 3: Writing datasets to files...")
+
+    # Write test datasets
+    for deg1, deg2 in degree_combinations:
+        output_file = f"{file_directory}/test_dataset_{deg1}_{deg2}.txt"
+        with open(output_file, 'w') as f:
+            for i, (line_data, _, _, _) in enumerate(test_expressions[(deg1, deg2)]):
+                f.write(line_data)
+                if i < len(test_expressions[(deg1, deg2)]) - 1:
+                    f.write("\n")
+
+        print(f"  Written {output_file} with {len(test_expressions[(deg1, deg2)])} samples")
+
+    training_expressions = all_expressions[:num_train]
+    validation_expressions = all_expressions[num_train:num_train+num_valid]
+
+    # Write training dataset
+    print(f"  Writing training dataset with {len(training_expressions)} samples...")
+    with open(f"{file_directory}/training_dataset.txt", 'w') as f:
+        for i, (line_data, _, _, _) in enumerate(training_expressions):
+            f.write(line_data)
+            if i < len(training_expressions) - 1:
+                f.write("\n")
+
+    # Write valid dataset
+    print(f"  Writing validation dataset with {len(validation_expressions)} samples...")
+    with open(f"{file_directory}/validation_dataset.txt", 'w') as f:
+        for i, (line_data, _, _, _) in enumerate(validation_expressions):
+            f.write(line_data)
+            if i < len(validation_expressions) - 1:
+                f.write("\n")
+
+
+    print(f"\nDataset generation complete!")
+    print(f"Training dataset: {len(training_expressions)} samples")
+    print(f"Test datasets: 9 datasets with {num_test} samples each")
+    print(f"Total unique expressions: {len(seen_expressions)}")
+
+    # Print degree distribution in training data
+    degree_counts = {}
+    for _, _, deg1, deg2 in training_expressions:
+        key = (deg1, deg2)
+        degree_counts[key] = degree_counts.get(key, 0) + 1
+
+    print(f"\nTraining data degree distribution:")
+    for (deg1, deg2), count in sorted(degree_counts.items()):
+        print(f"  ({deg1}, {deg2}): {count} samples")
