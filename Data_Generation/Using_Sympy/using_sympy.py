@@ -1,5 +1,5 @@
 # import dependencies
-import sympy as sp
+import sympy
 import random
 import re
 
@@ -52,18 +52,18 @@ def polynomial_to_prefix_tokens(poly, variable):
         return "P 0"
     
     # Expand and collect terms
-    expanded = sp.expand(poly)
+    expanded = sympy.expand(poly)
     
     # Get all terms
-    terms = sp.Add.make_args(expanded)
-    if len(terms) == 1 and not isinstance(expanded, sp.Add):
+    terms = sympy.Add.make_args(expanded)
+    if len(terms) == 1 and not isinstance(expanded, sympy.Add):
         terms = [expanded]
     
     # Sort terms by degree (highest first)
     def get_degree(term):
         if variable not in term.free_symbols:
             return 0
-        return sp.degree(term, variable)
+        return sympy.degree(term, variable)
     
     terms = sorted(terms, key=get_degree, reverse=True)
     
@@ -111,7 +111,7 @@ import numpy as np
 from typing import List, Tuple, Dict, Optional
 
 # Tokenized str to sympy
-def parse_prefix_to_sympy(tokens: List[str]) -> sp.Expr:
+def parse_prefix_to_sympy(tokens: List[str]) -> sympy.Expr:
     """
     Parses a list of tokens in prefix notation into a SymPy expression.
     Handles multi-token numbers starting with 'N' or 'P'.
@@ -138,16 +138,16 @@ def parse_prefix_to_sympy(tokens: List[str]) -> sp.Expr:
             if prefix_token in ['N', 'P']:
                 # Found N/P prefix for the number
                 sign = -1 if prefix_token == 'N' else 1
-                stack.append(sp.Integer(sign * int(num_str)))
+                stack.append(sympy.Integer(sign * int(num_str)))
                 i -= 1 # Consume the N/P token as well
             elif prefix_token in ['a', 'b', 'c', 'd', 'e', 'x', 'y', 'z']:
                 # Found a variable character prefix
                 var_name = prefix_token + num_str
-                stack.append(sp.symbols(var_name))
+                stack.append(sympy.symbols(var_name))
                 i -= 1 # Consume the variable character token
             else:
                 # No N/P or variable prefix, treat as a simple integer
-                stack.append(sp.Integer(num_str))
+                stack.append(sympy.Integer(num_str))
                 # Index 'i' is already pointing to the element before digits (or -1)
                 # The outer loop's i -= 1 will handle moving past this element correctly
         elif token in ['+', '*', '^',]: # Binary operators
@@ -156,20 +156,20 @@ def parse_prefix_to_sympy(tokens: List[str]) -> sp.Expr:
             op1 = stack.pop()
             op2 = stack.pop()
             if token == '+':
-                stack.append(sp.Add(op1, op2))
+                stack.append(sympy.Add(op1, op2))
             elif token == '*':
-                stack.append(sp.Mul(op1, op2))
+                stack.append(sympy.Mul(op1, op2))
             elif token == '^':
-                stack.append(sp.Pow(op1, op2))
+                stack.append(sympy.Pow(op1, op2))
             i -= 1
         # Add specific handling for single letters if they are variables in your vocab
         elif token in ['a', 'b', 'c', 'd', 'e', 'x', 'y', 'z'] and (i == end_idx or not tokens[i+1].isdigit()):
              # Handle single letter variables (like 'a' not followed by digits)
-             stack.append(sp.symbols(token))
+             stack.append(sympy.symbols(token))
              i -= 1
         # Check for tokens that directly match the variable pattern (e.g., "b2", "a10")
         elif len(token) > 1 and token[0].isalpha() and token[1:].isdigit():
-            stack.append(sp.symbols(token))
+            stack.append(sympy.symbols(token))
             i -= 1
         else:
             # Unrecognized token - might be an error or need specific handling
@@ -182,8 +182,8 @@ def parse_prefix_to_sympy(tokens: List[str]) -> sp.Expr:
 
 def generate_dataset_line(degree1=None, degree2=None, debug=False):
     """Generate one line of the dataset."""
-    a = sp.Symbol('a')
-    b = sp.Symbol('b')
+    a = sympy.Symbol('a')
+    b = sympy.Symbol('b')
 
     poly1 = generate_random_polynomial(b, degree1)
     poly2 = generate_random_polynomial(a, degree2)
@@ -193,7 +193,7 @@ def generate_dataset_line(degree1=None, degree2=None, debug=False):
 
     # Substitute poly2 into poly1
     substituted = poly1.subs(b, poly2)
-    expanded_result = sp.expand(substituted)
+    expanded_result = sympy.expand(substituted)
     if debug:
       print(f"Substituted: {substituted}")
       print(f"Expanded: {expanded_result}")

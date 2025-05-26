@@ -10,6 +10,7 @@ import argparse
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
+import os
 import dataset
 import model
 import trainer
@@ -106,6 +107,13 @@ chars_symbolic = [
     "n10","n11","n12","n13","n14","n15","n16","n17","n18",
     "N","P","~","$","&","+","*","^","/","-",":",
 ] + [str(i) for i in range(0, args.max_number_token)] # ["a19","a20","a21","a22"]
+# chars_symbolic = [
+#     "□",
+#     "a","b","c","d","e","x","y","z",
+#     "⁇","?",
+#     "a0","a1","b0","b1",
+#     "N","P","&","+","*","^",
+# ] + [str(i) for i in range(0, 10)]
 
 chars_symbolic_new = []
 
@@ -410,6 +418,10 @@ elif args.mode == "inequality_evaluate4":
     assert args.reading_params_path is not None
     assert args.evaluate_corpus_path is not None
 
+    # Create output directory if it doesn't exist
+    output_dir = os.path.dirname(args.outputs_path)
+    if output_dir:  # Only create directory if path contains a directory component
+        os.makedirs(output_dir, exist_ok=True)
     # Load GPT model
     gpt.load_state_dict(torch.load(args.reading_params_path))
 

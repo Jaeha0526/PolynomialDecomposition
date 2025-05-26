@@ -163,6 +163,7 @@ def parse_prefix_to_sympy(tokens: List[str]) -> sympy.Expr:
     """
     stack = []
     i = len(tokens) - 1
+    end_idx = len(tokens) - 1
     while i >= 0:
         token = tokens[i]
 
@@ -227,7 +228,7 @@ def parse_prefix_to_sympy(tokens: List[str]) -> sympy.Expr:
             stack.append(sympy.symbols(token))
             i -= 1
         # Add specific handling for single letters if they are variables in your vocab
-        elif token in ['a', 'b', 'c', 'd', 'e', 'x', 'y', 'z'] and (i == 0 or not tokens[i-1].isdigit()):
+        elif token in ['a', 'b', 'c', 'd', 'e', 'x', 'y', 'z'] and (i == end_idx or not tokens[i+1].isdigit()):
              # Handle single letter variables (like 'a' not followed by digits)
              stack.append(sympy.symbols(token))
              i -= 1
@@ -242,9 +243,55 @@ def parse_prefix_to_sympy(tokens: List[str]) -> sympy.Expr:
     if len(stack) != 1:
         raise ValueError(f"Invalid prefix expression: stack size is {len(stack)} at the end, expected 1. Stack: {stack}")
     return stack[0]    
-    
+
 
 def is_valid_expression_sympy(input_str: str, pred_str: str) -> bool:
+    """
+    Validates the predicted expression against the input expression using SymPy.
+    Parses prefix notation, performs substitution based on '&' delimiter,
+    and checks for mathematical equivalence.
+    """
+    try:
+        # 0.
+        pred_str = pred_str.split('?')[0]
+
+        # 1. Parse pred_str with &
+        pred_parts_str = pred_str.split(' & ')
+        if len(pred_parts_str) != 2:
+            print(f"[SymPy Valid] Failed: Expected 2 parts in pred_str delimited by ' & ', got {len(pred_parts_str)}")
+            return False
+
+        # 2. Convert prediction parts to SymPy expressions
+        tokens_outer = [t for t in pred_parts_str[0].split(' ') if t] # Tokenize and remove empty strings
+        tokens_inner = [t for t in pred_parts_str[1].split(' ') if t]
+
+        outer_poly = parse_prefix_to_sympy(tokens_outer)
+        inner_poly = parse_prefix_to_sympy(tokens_inner)
+
+        # 3. Substitute into the base polynomial
+        b = sympy.symbols('b')
+        final_poly = outer_poly.xreplace({b: inner_poly})
+
+        # 4. Convert input_str to SymPy expression
+        tokens_target = [t for t in input_str.split(' ') if t]
+        target_poly = parse_prefix_to_sympy(tokens_target)
+
+        # 5. Check for equivalence
+        # Simplify the difference and check if it's zero
+        difference = sympy.simplify(final_poly - target_poly)
+        is_correct = (difference == 0)
+
+        print(f"[SymPy Valid] Target: {target_poly}, Final Pred (after subs): {final_poly}, Simplified Diff: {difference} -> {is_correct}")
+        return is_correct
+
+    except Exception as e:
+        print(f"[SymPy Valid] Error during SymPy validation: {e}")
+        print(f"  Input Str: {input_str}")
+        print(f"  Pred Str: {pred_str}")
+
+
+
+def is_valid_expression_sympy_multi(input_str: str, pred_str: str) -> bool:
     """
     Validates the predicted expression against the input expression using SymPy.
     Parses prefix notation, performs substitution based on '&' delimiter,
