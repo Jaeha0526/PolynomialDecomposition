@@ -204,7 +204,7 @@ def generate_dataset_line(degree1=None, degree2=None, debug=False):
     poly2_tokens = polynomial_to_prefix_tokens(poly2, a)
 
     # Format the line
-    line = f"{result_tokens} ? {poly1_tokens} & {poly2_tokens}"
+    line = f"{result_tokens} ⁇ {poly1_tokens} & {poly2_tokens}"
     if debug:
       print(f"Result: {line}")
 

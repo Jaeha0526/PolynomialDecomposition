@@ -54,6 +54,9 @@ argp.add_argument("--n_embd", default=256, type=int)
 argp.add_argument("--max_output_length", default=32, type=int)
 argp.add_argument("--max_number_token", default=101, type=int)
 argp.add_argument("--short_prediction", default=False)
+argp.add_argument("--num_samples", type=int, default=30, help="Number of samples for multisampling")
+argp.add_argument("--sympy", default=0, type=int)
+argp.add_argument("--test", default=0, type=int)
 args = argp.parse_args()
 
 if args.lr_decay == 1 :
@@ -65,6 +68,17 @@ if args.shuffle == 1 :
     args.shuffle = True
 else :
     args.shuffle = False
+
+if args.sympy == 1 :
+    args.sympy = True
+else: 
+    args.sympy = False
+    
+if args.test == 1 :
+    args.test = True
+    print(getattr(args,'test',False))
+else: 
+    args.test = False
 
 # save the device
 device = torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
@@ -91,7 +105,7 @@ chars_symbolic = [
     "n1","n2","n3","n4","n5","n6","n7","n8","n9",
     "n10","n11","n12","n13","n14","n15","n16","n17","n18",
     "N","P","~","$","&","+","*","^","/","-",":",
-] + [str(i) for i in range(0, args.max_number_token)] + ["a19","a20","a21","a22"]
+] + [str(i) for i in range(0, args.max_number_token)] # ["a19","a20","a21","a22"]
 
 chars_symbolic_new = []
 
@@ -131,7 +145,7 @@ if args.mode == "inequality_finetune":
         wandb.init(
             # Set the project where this run will be logged
             project="basic-intro",
-            # We pass a run name (otherwise it’ll be randomly assigned, like sunshine-lollypop-10)
+            # We pass a run name (otherwise it'll be randomly assigned, like sunshine-lollypop-10)
             name=args.exp_name,
             # Track hyperparameters and run metadata
             config={
@@ -161,7 +175,7 @@ if args.mode == "inequality_finetune":
         wandb.init(
             # Set the project where this run will be logged
             project="basic-intro",
-            # We pass a run name (otherwise it’ll be randomly assigned, like sunshine-lollypop-10)
+            # We pass a run name (otherwise it'll be randomly assigned, like sunshine-lollypop-10)
             name=args.exp_name,
             # Track hyperparameters and run metadata
             config={
@@ -242,6 +256,135 @@ elif args.mode == "inequality_evaluate":
         print(
             "Predictions written to {}; no targets provided".format(args.outputs_path)
         )
+
+
+elif args.mode == "inequality_evaluate2" :
+    def process_line(line, gpt, test_dataset, device, max_output_length):
+        line_here = line.replace("?", "⁇")
+        x = line_here.split("⁇")[0]
+        x = x.split(" ")
+        x.append("⁇")
+        x = [item for item in x if item != ""]
+        x = torch.tensor([test_dataset.stoi[s] for s in x], dtype=torch.long)[None, ...].to(device)
+        pred = utils.sample(gpt, x, max_output_length, sample=False)[0]
+        completion = "".join([test_dataset.itos[int(i)] + " " for i in pred])
+        pred = completion.replace(" ", "").split("⁇")[1]
+        pred2 = completion.split("⁇")[1]
+        True_pred = line_here.split("⁇")[1].replace(" ", "") + "⁇" + pred2
+
+        return True_pred, pred
+
+
+    assert args.outputs_path is not None
+    assert args.reading_params_path is not None
+    assert args.evaluate_corpus_path is not None
+
+    gpt.load_state_dict(torch.load(args.reading_params_path))
+    test_dataset = dataset.SymbolicDataset(
+        block_size,
+        chars_symbolic,
+        open(args.evaluate_corpus_path, encoding="utf-8").read(),
+    )
+    correct = 0
+    total = 0
+
+    with open(args.outputs_path, "w", encoding="utf-8") as fout:
+        predictions = []
+        with ThreadPoolExecutor() as executor:
+            futures = []
+            lines = open(args.evaluate_corpus_path, encoding="utf-8").readlines()
+            for line in tqdm(lines):
+                futures.append(executor.submit(process_line, line, gpt, test_dataset, device, args.max_output_length))
+
+            for future in tqdm(futures):
+                True_pred, pred = future.result()
+                predictions.append(pred)
+                fout.write(True_pred + "\n")
+
+        total, correct = utils.evaluate_substitutions(args.evaluate_corpus_path, predictions)
+
+    if total > 0:
+        print(f"Correct: {correct} out of {total}: {correct / total * 100:.2f}%")
+    else:
+        print(f"Predictions written to {args.outputs_path}; no targets provided")
+
+
+elif args.mode == "inequality_evaluate3" :
+    def batchify_lines(lines, test_dataset, batch_size, device):
+        """
+        Convert a batch of lines into tensors for model input.
+        """
+        batched_tensors = []
+        for line in lines:
+            line_here = line.replace("?", "⁇")
+            x = line_here.split("⁇")[0]
+            x = x.split(" ")
+            x.append("⁇")
+            x = [item for item in x if item != ""]
+            x_tensor = torch.tensor([test_dataset.stoi[s] for s in x], dtype=torch.long)
+            batched_tensors.append(x_tensor)
+        # Pad sequences to the same length within the batch
+        batched_tensors = torch.nn.utils.rnn.pad_sequence(batched_tensors, batch_first=True).to(device)
+        return batched_tensors, lines
+
+    assert args.outputs_path is not None
+    assert args.reading_params_path is not None
+    assert args.evaluate_corpus_path is not None
+
+    # Load GPT model
+    gpt.load_state_dict(torch.load(args.reading_params_path))
+
+    # Create dataset
+    test_dataset = dataset.SymbolicDataset(
+        block_size,
+        chars_symbolic,
+        open(args.evaluate_corpus_path, encoding="utf-8").read(),
+    )
+
+    # Prepare to evaluate
+    correct = 0
+    total = 0
+    batch_size = args.evaluate_batch_size # Define your batch size here
+    lines_buffer = []
+
+    with open(args.outputs_path, "w", encoding="utf-8") as fout:
+        predictions = []
+        lines = open(args.evaluate_corpus_path, encoding="utf-8").readlines()
+
+        for line in tqdm(lines):
+            lines_buffer.append(line)
+
+            # If we have a full batch or we've reached the end of the dataset
+            if len(lines_buffer) == batch_size or line == lines[-1]:
+                # Convert buffered lines into tensors and process the batch
+                x_batch, original_lines = batchify_lines(lines_buffer, test_dataset, batch_size, device)
+                print(x_batch)
+
+                # Generate predictions for the batch
+                batch_preds = utils.sample(gpt, x_batch, args.max_output_length, sample=False)
+
+                for i, pred in enumerate(batch_preds):
+                    completion = "".join([test_dataset.itos[int(j)] + " " for j in pred])
+                    pred_str = completion.replace(" ", "").split("⁇")[1]
+                    pred2 = completion.split("⁇")[1]
+                    predictions.append(pred_str)
+
+                    # Prepare the true prediction string
+                    line_here = original_lines[i].replace("?", "⁇")
+                    True_pred = line_here.split("⁇")[1].replace(" ", "") + "⁇" + pred2
+                    fout.write(True_pred + "\n")
+
+                # Clear the buffer after processing the batch
+                lines_buffer = []
+
+        # Evaluate substitutions after processing all batches
+        total, correct = utils.evaluate_substitutions(args.evaluate_corpus_path, predictions)
+
+    if total > 0:
+        print(f"Correct: {correct} out of {total}: {correct / total * 100:.2f}%")
+    else:
+        print(f"Predictions written to {args.outputs_path}; no targets provided")
+
 
 
 elif args.mode == "inequality_evaluate4":
@@ -366,9 +509,12 @@ elif args.mode == "debug_beam":
 
     total = 0
 
+    # Create output directory if it doesn't exist
+    import os
+    os.makedirs(os.path.dirname(args.outputs_path), exist_ok=True)
     with open(args.outputs_path, "w", encoding="utf-8") as fout:
         idx = 0
-        for line in tqdm(open(args.evaluate_corpus_path, encoding="utf-8")):
+        for i, line in tqdm(enumerate(open(args.evaluate_corpus_path, encoding="utf-8"))):
 
             if total == args.max_test :
                 break
@@ -392,6 +538,7 @@ elif args.mode == "debug_beam":
 
             fout.write(pred_output + "\n")
             fout.flush()
+            
 
             total=total+1
 
@@ -402,6 +549,14 @@ elif args.mode == "debug_beam":
                     f"{(correct_counts[width] / total * 100):.2f}%"
                 )
             print("\n", flush=True)
+            
+            if i % 50 == 49:
+                fout.write(f"Statistics at line {i} :\n")
+                for width in beam_widths:
+                    fout.write(f"Beam width {width}: {correct_counts[width]} out of {total}: "
+                               f"{(correct_counts[width] / total * 100):.2f}%\n")
+                fout.write("\n")
+                fout.flush()
 
             idx += 1
 
@@ -447,6 +602,83 @@ elif args.mode == "search_benchmark":
         total += 1
 
     print("Correct: {} out of {}: {}%".format(correct, total, correct / total * 100))
+
+elif args.mode == "debug_multisampling":
+    assert args.outputs_path is not None
+    assert args.reading_params_path is not None
+    assert args.evaluate_corpus_path is not None
+    gpt.load_state_dict(torch.load(args.reading_params_path))
+
+    tokentype = dataset.SymbolicDataset(
+        block_size,
+        chars_symbolic,
+        open(args.evaluate_corpus_path, encoding="utf-8").read(),
+    )
+
+    # Set up statistics tracking
+    max_samples = args.num_samples if hasattr(args, 'num_samples') else args.beam_width
+    sample_widths = list(range(1, max_samples + 1))
+    correct_counts = {width: 0 for width in sample_widths}
+    correct_idx = {width: [] for width in sample_widths}
+
+    total = 0
+
+    with open(args.outputs_path, "w", encoding="utf-8") as fout:
+        idx = 0
+        for i, line in tqdm(enumerate(open(args.evaluate_corpus_path, encoding="utf-8"))):
+            if total == args.max_test:
+                break
+
+            line_here = line.replace("?", tokentype.MASK_CHAR)
+            input_str = line_here.split(tokentype.MASK_CHAR)[0]
+
+            pred_str, correct_sample_rank = utils.LLM_MultiSampling_check(gpt, input_str, tokentype, device, args)
+
+            if correct_sample_rank != -1:
+                for width in sample_widths:
+                    if width > correct_sample_rank:  # If sample width is larger than the rank where we found it
+                        correct_counts[width] += 1
+                        correct_idx[width].append(idx)
+
+            pred_output = (line_here.split(tokentype.MASK_CHAR)[1].replace(" ", "") + tokentype.MASK_CHAR +
+                          (pred_str if pred_str != "False" else "False"))
+
+            print(f"final pred : {input_str} -> {pred_str}", flush=True)
+            fout.write(pred_output + "\n")
+            fout.flush()
+
+            total = total + 1
+
+            print("\nCurrent Statistics:")
+            for width in sample_widths:
+                print(
+                    f"Sample width {width}: {correct_counts[width]} out of {total}: "
+                    f"{(correct_counts[width] / total * 100):.2f}%"
+                )
+            print("\n", flush=True)
+            
+            if i % 50 == 49:
+                fout.write(f"Statistics at line {i} :\n")
+                for width in sample_widths:
+                    fout.write(f"Sample width {width}: {correct_counts[width]} out of {total}: "
+                               f"{(correct_counts[width] / total * 100):.2f}%\n")
+                fout.write("\n")
+                fout.flush()
+
+            idx += 1
+
+    # Final statistics
+    if total > 0:
+        print("Final Statistics:")
+        for width in sample_widths:
+            print(
+                f"Sample width {width}: {correct_counts[width]} out of {total}: "
+                f"{(correct_counts[width] / total * 100):.2f}%"
+            )
+    else:
+        print(
+            "Predictions written to {}; no targets provided".format(args.outputs_path)
+        )
 
 if __name__ == "__main__":
     # Code that runs when the script is executed directly
