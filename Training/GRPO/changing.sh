@@ -9,7 +9,7 @@ CHECKPOINTS=(
     120
 )
 
-EXP_NAME=single_variable
+EXP_NAME=_BGRPO
 for CHECKPOINT in ${CHECKPOINTS[@]}; do
     python convert_safetensors_to_pt.py \
         --input_dir=${EXP_DIR}/${EXP_NAME}/checkpoint-${CHECKPOINT} \

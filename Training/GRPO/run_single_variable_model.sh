@@ -15,14 +15,14 @@ echo "Starting single variable model with simple reward on GPU ${CUDA_VISIBLE_DE
 python grpo_ablation.py \
   --model_name ${MODEL_FILE} \
   --reward_type simple \
-  --output_dir ../../data_storage/outputs/${MODEL}_BGRPO \
+  --output_dir ../../data_storage/outputs/_BGRPO \
   --config_name ${CONFIG_FILE} \
   --dataset_path ../../data_storage/dataset/single_variable/training_dataset.txt \
   --disable_wandb \
   --lr 1e-5 \
   --beta 0.01 \
-  --total_training_samples 100 \
-  --num_generations 30 \
+  --total_training_samples 200 \
+  --num_generations 20 \
   --num_questions 8 \
   --num_iterations 5 \
   --save_steps 20
