@@ -47,14 +47,18 @@ class SymbolicTokenizer:
         self.mask_token = self.MASK_CHAR
         self.mask_token_id = self.stoi[self.MASK_CHAR]
 
-        # TRL/HF compatibility often requires bos/eos tokens, even if not explicitly used by the model.
-        # We can reuse existing tokens or add placeholders if needed. Let's use PAD_CHAR as a pseudo-EOS for now.
-        self.eos_token = self.PAD_CHAR
+        # For GRPO compatibility, we need proper EOS and BOS tokens
+        # Use the mask token "⁇" as EOS since it's semantically appropriate for end-of-sequence
+        self.eos_token = self.PAD_CHAR  
         self.eos_token_id = self.pad_token_id
-        # Add bos_token_id for compatibility, using the eos_token_id as a placeholder.
-        # The encode/decode methods do not actively use this bos_token.
-        self.bos_token_id = self.eos_token_id
-        self.END_INDEX = self.pad_token_id
+        
+        # For BOS token, we can use the padding token or create a separate one
+        # For now, use padding token but ensure it's different from EOS
+        self.bos_token = self.PAD_CHAR
+        self.bos_token_id = self.pad_token_id
+        
+        # Legacy compatibility
+        self.END_INDEX = self.eos_token_id
         self.MASK_INDEX = self.mask_token_id
 
     @property
@@ -97,7 +101,7 @@ class SymbolicTokenizer:
             padded_outputs.append({'input_ids': padded_ids, 'attention_mask': padded_mask})
         return padded_outputs
 
-    def __call__(self, text: List[str] | str, padding=True, truncation=False, max_length=None, return_tensors="pt", **kwargs) -> Dict[str, torch.Tensor]:
+    def __call__(self, text: List[str] | str, padding=False, truncation=False, max_length=None, return_tensors="pt", **kwargs) -> Dict[str, torch.Tensor]:
         """
         Tokenizes a batch of strings, handling padding and truncation.
         """

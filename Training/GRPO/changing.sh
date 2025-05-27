@@ -7,10 +7,6 @@ CHECKPOINTS=(
     80
     100
     120
-    140
-    160
-    180
-    200
 )
 
 EXP_NAME=single_variable

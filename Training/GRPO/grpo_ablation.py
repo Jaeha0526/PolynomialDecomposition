@@ -202,10 +202,18 @@ def parse_prefix_to_sympy(tokens: List[str]) -> sympy.Expr:
             stack.append(sympy.symbols(token))
             i -= 1
         # Add specific handling for single letters if they are variables in your vocab
-        elif token in ['a', 'b', 'c', 'd', 'e', 'x', 'y', 'z'] and (i == 0 or not tokens[i-1].isdigit()):
-             # Handle single letter variables (like 'a' not followed by digits)
-             stack.append(sympy.symbols(token))
-             i -= 1
+        elif token in ['a', 'b', 'c', 'd', 'e', 'x', 'y', 'z']:
+             # Handle single letter variables - since we're iterating backwards, 
+             # we need to check if the NEXT token (at i+1) is a digit
+             if i + 1 < len(tokens) and tokens[i + 1].isdigit():
+                 # This is a variable prefix (like 'a' in 'a2'), skip for now
+                 # It will be handled when we process the digit
+                 i -= 1
+                 continue
+             else:
+                 # This is a standalone variable (like 'a' or 'b')
+                 stack.append(sympy.symbols(token))
+                 i -= 1
         # Check for tokens that directly match the variable pattern (e.g., "b2", "a10")
         elif len(token) > 1 and token[0].isalpha() and token[1:].isdigit():
             stack.append(sympy.symbols(token))
@@ -251,8 +259,61 @@ def count_expression_leaves(expr):
 
     return count
 
-# --- SymPy Validation Function ---
 def is_valid_expression_sympy(input_str: str, pred_str: str, retrieve_length: bool) -> bool:
+    """
+    Validates the predicted expression against the input expression using SymPy.
+    Parses prefix notation, performs substitution based on '&' delimiter,
+    and checks for mathematical equivalence.
+    """
+    try:
+        # # 0.
+        # pred_str = pred_str.replace('?', '⁇').split('⁇')[1]
+        print(f"[DEBUG] pred_str: {pred_str}")
+
+        # 1. Parse pred_str with &
+        pred_parts_str = pred_str.split(' & ')
+        if len(pred_parts_str) != 2:
+            print(f"[SymPy Valid] Failed: Expected 2 parts in pred_str delimited by ' & ', got {len(pred_parts_str)}")
+            return False
+
+        # 2. Convert prediction parts to SymPy expressions
+        tokens_outer = [t for t in pred_parts_str[0].split(' ') if t] # Tokenize and remove empty strings
+        tokens_inner = [t for t in pred_parts_str[1].split(' ') if t]
+
+        outer_poly = parse_prefix_to_sympy(tokens_outer)
+        inner_poly = parse_prefix_to_sympy(tokens_inner)
+
+        # 3. Substitute into the base polynomial
+        b = sympy.symbols('b')
+        final_poly = outer_poly.xreplace({b: inner_poly})
+
+        # 4. Convert input_str to SymPy expression
+        tokens_target = [t for t in input_str.split(' ') if t]
+        target_poly = parse_prefix_to_sympy(tokens_target)
+
+        # 5. Check for equivalence
+        # Simplify the difference and check if it's zero
+        difference = sympy.simplify(final_poly - target_poly)
+        is_correct = (difference == 0)
+
+        print(f"[SymPy Valid] Target: {target_poly}, Final Pred (after subs): {final_poly}, Simplified Diff: {difference} -> {is_correct}")
+        if retrieve_length:
+            if is_correct:
+                return is_correct, count_expression_leaves(outer_poly) + count_expression_leaves(inner_poly)
+            else:
+                return is_correct, -1
+        else:
+            return is_correct
+
+    except Exception as e:
+        print(f"[SymPy Valid] Error during SymPy validation: {e}")
+        print(f"  Input Str: {input_str}")
+        print(f"  Pred Str: {pred_str}")
+
+
+
+# --- SymPy Validation Function ---
+def is_valid_expression_sympy_multi(input_str: str, pred_str: str, retrieve_length: bool) -> bool:
     """
     Validates the predicted expression against the input expression using SymPy.
     Parses prefix notation, performs substitution based on '&' delimiter,
@@ -350,7 +411,7 @@ def is_valid_expression(prompt: str, response: str) -> bool:
         # Handle empty input or prediction
         if not input_str or not pred_str:
             print(f"[is_valid] Empty input ('{input_str}') or prediction ('{pred_str}')")
-            return False
+            return False, -1
 
         # --- Use SymPy Validation ---
         print(f"[is_valid] Calling SymPy checker: Input='{input_str}', Pred='{pred_str}'")
@@ -379,8 +440,9 @@ def is_valid_expression(prompt: str, response: str) -> bool:
         # --- End Original Mathematica Call ---
 
     except Exception as e:
-        print(f"Error during validation top-level for prompt '{prompt}', response '{response}': {e}")
-        return False
+        print(f"Error during validation top-level for prompt '{prompt}', response '{response}', error: {e}")
+        raise e
+        return False, -1
 
 def check_beam_search(dataset, model, tokentype, beam_width, max_output_length, check_file_name):
 
@@ -593,7 +655,7 @@ grpo_config = GRPOConfig(
     save_steps=args.save_steps,  # Updated to 10
 
     # Generation parameters
-    max_prompt_length=850,
+    max_prompt_length=350,
     max_completion_length=150,
     temperature=1.0,
     top_k=50,
@@ -637,7 +699,7 @@ print(f"Training dataset created with {total_training_samples} samples")
 # print("Beam search checked")
 
 # Setup fot the beam search
-model.beam = True
+model.beam = False
 model.END_INDEX = tokenizer.eos_token_id
 model.MASK_INDEX = tokenizer.mask_token_id
 
