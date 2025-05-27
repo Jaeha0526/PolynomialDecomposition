@@ -158,3 +158,67 @@ Beam width 10: 0 out of 50: 0.00%
 ⁇False
 +*N9^bP2+*N16bP14&+*P18^aP2+*N9aN7
 ⁇False
++*P3^bP2+*P4bP17&+*P16^aP2+*P19aP19
+⁇False
++*N16^bP2+*N11bN10&+*N12^aP2+*N17aN18
+⁇False
++*N18^bP2+*P3bP5&+*P15^aP2+*P6aP8
+⁇False
++*P6^bP2+*N19bP16&+*P6^aP2+*P11aN10
+⁇False
++*N7^bP2+*P16bN17&+*P6^aP2N11
+⁇False
++*P6^bP2+*N6bP7&+*P10^aP2+*P3aP6
+⁇False
++*N15^bP2+*P12bP2&+*P10^aP2+*N12aP18
+⁇False
++*P10^bP2+*P6bP4&+*N7^aP2+*P20aN4
+⁇False
++*P17^bP2+*P1bN12&+*N17^aP2+*N18aN17
+⁇False
++*P17^bP2+*N5bN7&+*P12^aP2+*P12aP13
+⁇False
++*N3^bP2+*P17bN17&+*P3^aP2+*N12aP15
+⁇False
++*N10^bP2+*N19bP5&+*P16^aP2+*P8aP4
+⁇False
++*N17^bP2+*N19bN15&+*P1^aP2+*N13aN2
+⁇False
++*P8^bP2*P20b&+*P14^aP2*P4a
+⁇False
++*P14^bP2*N10b&+*N13^aP2+*N9aN11
+⁇False
++*N1^bP2+*N10bP14&+*N14^aP2+*P3aN15
+⁇False
++*P4^bP2+*P14bN16&+*N9^aP2+*N19aN14
+⁇False
++*N6^bP2+*N10bP7&+*N17^aP2N17
+⁇False
++*N5^bP2+*N15bN16&+*N1^aP2+*P18aP1
+⁇False
++*P15^bP2+*N13bN2&+*P4^aP2+*P2aP14
+⁇False
++*N7^bP2+*N9bP13&+*N11^aP2+*N10aN8
+⁇False
++*N14^bP2+*P13bN6&+*P3^aP2+*N1aP18
+⁇False
++*N17^bP2+*P20bN11&+*P1^aP2+*P7aN8
+⁇False
++*N16^bP2+*N9bN8&+*N15^aP2+*P1aP7
+⁇False
++*N1^bP2+*P8bN11&+*N19^aP2+*P14aP20
+⁇False
++*N17^bP2+*N5bP16&+*N7^aP2+*P13aN1
+⁇False
+Statistics at line 99 :
+Beam width 1: 0 out of 100: 0.00%
+Beam width 2: 0 out of 100: 0.00%
+Beam width 3: 0 out of 100: 0.00%
+Beam width 4: 0 out of 100: 0.00%
+Beam width 5: 0 out of 100: 0.00%
+Beam width 6: 0 out of 100: 0.00%
+Beam width 7: 0 out of 100: 0.00%
+Beam width 8: 0 out of 100: 0.00%
+Beam width 9: 0 out of 100: 0.00%
+Beam width 10: 0 out of 100: 0.00%
+

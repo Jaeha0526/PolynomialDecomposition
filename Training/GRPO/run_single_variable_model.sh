@@ -22,7 +22,7 @@ python grpo_ablation.py \
   --lr 1e-5 \
   --beta 0.01 \
   --total_training_samples 100 \
-  --num_generations 20 \
+  --num_generations 30 \
   --num_questions 8 \
   --num_iterations 5 \
   --save_steps 20

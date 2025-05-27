@@ -364,6 +364,16 @@ class GPT(nn.Module):
         x = x.to(device)  # Ensure input is on GPU
         print(f"[DEBUG] data device: {x.device}")
         
+        # Remove trailing zeros from input sequence
+        # Convert to list for easier manipulation
+        seq_list = x[0].tolist()
+        # Find last non-zero element
+        last_nonzero = len(seq_list) - 1
+        while last_nonzero >= 0 and seq_list[last_nonzero] == 0:
+            last_nonzero -= 1
+        # Truncate sequence and convert back to tensor on device
+        x = torch.tensor(seq_list[:last_nonzero + 1]).unsqueeze(0).to(device)
+        
         block_size = self.get_block_size()
         self.eval()
         # Initialize the beam with the input sequence and log probabilities
@@ -570,6 +580,8 @@ class GPT_hf(GPT):
             print(f"[DEBUG generate] beam search enabled")
             print(f"[DEBUG generate] END_INDEX: {self.END_INDEX}, MASK_INDEX: {self.MASK_INDEX}")
             beam_width = len(input_ids)
+            print(f"[DEBUG generate] input_ids shape: {input_ids.shape}")
+            print(f"[DEBUG generate] beam width: {beam_width}")
             beam_result = self.beam_search(input_ids[0:1], max_new_tokens, beam_width, temperature=1.0, PaddingToken=None, hf=self.hf)
             print(f"[DEBUG generate] beam result: {beam_result}")
             return beam_result

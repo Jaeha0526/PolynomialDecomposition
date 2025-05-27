@@ -699,7 +699,7 @@ print(f"Training dataset created with {total_training_samples} samples")
 # print("Beam search checked")
 
 # Setup fot the beam search
-model.beam = False
+model.beam = True
 model.END_INDEX = tokenizer.eos_token_id
 model.MASK_INDEX = tokenizer.mask_token_id
 
