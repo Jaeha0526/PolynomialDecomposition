@@ -97,12 +97,11 @@ def evaluate_substitutions(filepath, predicted_substitutions, sympy=False):
     lines = [x.strip().replace('?','⁇') for x in fin]
     lines = [x.split('⁇') for x in lines]
     true_substitutions = [x[1] for x in lines]
-    predicted_substitutions2 = [x[0] for x in lines]
     
     print("--------------------------------")
     print(f"Example three lines")
     print(f"true_substitutions: {true_substitutions[:3]}")
-    print(f"predicted_substitutions2: {predicted_substitutions2[:3]}")
+    print(f"predicted_substitutions: {predicted_substitutions[:3]}")
     print("--------------------------------")
     
     total = len(true_substitutions)
@@ -110,7 +109,7 @@ def evaluate_substitutions(filepath, predicted_substitutions, sympy=False):
     
     if sympy:
         correct = len(list(filter(lambda x: is_valid_expression_sympy2(x[0], x[1]),
-        zip(true_substitutions, predicted_substitutions2))))
+        zip(true_substitutions, predicted_substitutions))))
     else:
         true_substitutions = [x[1].replace(' ','') for x in lines]
         correct = len(list(filter(lambda x: x[0] == x[1],

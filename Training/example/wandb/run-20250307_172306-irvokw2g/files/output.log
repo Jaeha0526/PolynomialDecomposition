@@ -1,5 +1,0 @@
-epoch 1 iter 378: train loss 0.31215739250 valid_loss 0.24251116812. best saved at i
-epoch 2 iter 378: train loss 0.14023925364 valid_loss 0
-epoch 3 iter 378: train loss 0.10908272862 valid_loss 0
-epoch 4 iter 378: train loss 0.09825032204 valid_loss 0
-epoch 5 iter 378: train loss 0.07767320424 valid_loss 0
