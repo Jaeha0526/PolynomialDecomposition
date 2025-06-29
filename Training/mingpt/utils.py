@@ -84,7 +84,7 @@ def evaluate_places(filepath, predicted_places):
     return (float(total),float(correct))
 
 
-def evaluate_substitutions(filepath, predicted_substitutions):
+def evaluate_substitutions(filepath, predicted_substitutions, sympy=False):
   """ Computes percent of correctly predicted substitution.
 
   Arguments:
@@ -96,13 +96,70 @@ def evaluate_substitutions(filepath, predicted_substitutions):
   with open(filepath, encoding='utf-8') as fin:
     lines = [x.strip().replace('?','⁇') for x in fin]
     lines = [x.split('⁇') for x in lines]
-    true_substitutions = [x[1].replace(' ','') for x in lines]
+    true_substitutions = [x[1] for x in lines]
+    predicted_substitutions2 = [x[0] for x in lines]
+    
+    print("--------------------------------")
+    print(f"Example three lines")
+    print(f"true_substitutions: {true_substitutions[:3]}")
+    print(f"predicted_substitutions2: {predicted_substitutions2[:3]}")
+    print("--------------------------------")
+    
     total = len(true_substitutions)
     assert total == len(true_substitutions)
-    correct = len(list(filter(lambda x: x[0] == x[1],
-      zip(true_substitutions, predicted_substitutions))))
+    
+    if sympy:
+        correct = len(list(filter(lambda x: is_valid_expression_sympy2(x[0], x[1]),
+        zip(true_substitutions, predicted_substitutions2))))
+    else:
+        true_substitutions = [x[1].replace(' ','') for x in lines]
+        correct = len(list(filter(lambda x: x[0] == x[1],
+        zip(true_substitutions, predicted_substitutions))))
     return (float(total),float(correct))
 
+def is_valid_expression_sympy2(target_str: str, pred_str: str) -> bool:
+    """
+    Validates the predicted expression against the target expression using SymPy.
+    Parses prefix notation, performs substitution based on '&' delimiter,
+    and checks for mathematical equivalence.
+    """
+    try:
+        # 1. Parse target and pred with &
+        target_parts_str = target_str.split(' & ')
+        pred_parts_str = pred_str.split(' & ')
+        if len(target_parts_str) != 2 or len(pred_parts_str) != 2:
+            print(f"[SymPy Valid] Failed: Expected 2 parts in target_str or pred_str delimited by ' & ', got {len(target_parts_str)} or {len(pred_parts_str)}")
+            return False
+
+        # 2. Convert target and pred parts to SymPy expressions
+        tokens_outer = [t for t in pred_parts_str[0].split(' ') if t] # Tokenize and remove empty strings
+        tokens_inner = [t for t in pred_parts_str[1].split(' ') if t]
+        tokens_target_outer = [t for t in target_parts_str[0].split(' ') if t]
+        tokens_target_inner = [t for t in target_parts_str[1].split(' ') if t]
+
+        outer_poly = parse_prefix_to_sympy(tokens_outer)
+        inner_poly = parse_prefix_to_sympy(tokens_inner)
+        target_poly_outer = parse_prefix_to_sympy(tokens_target_outer)
+        target_poly_inner = parse_prefix_to_sympy(tokens_target_inner)
+
+        # 3. Substitute into the base polynomial
+        b = sympy.symbols('b')
+        final_poly = outer_poly.xreplace({b: inner_poly})
+        target_poly = target_poly_outer.xreplace({b: target_poly_inner})
+
+        # 4. Check for equivalence
+        # Simplify the difference and check if it's zero
+        difference = sympy.simplify(final_poly - target_poly)
+        is_correct = (difference == 0)
+
+
+        print(f"[SymPy Valid] Target: {target_poly}, Final Pred (after subs): {final_poly}, Simplified Diff: {difference} -> {is_correct}")
+        return is_correct
+
+    except Exception as e:
+        print(f"[SymPy Valid] Error during SymPy validation: {e}")
+        print(f"  Target Str: {target_str}")
+        print(f"  Pred Str: {pred_str}")
 
 
 def LLM_BeamSearch_check(gpt, input_str, tokentype, device, args):

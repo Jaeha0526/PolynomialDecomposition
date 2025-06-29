@@ -478,7 +478,8 @@ elif args.mode == "inequality_evaluate4":
                 predictions_dict[original_indices[j]] = pred_str
 
                 line_here = batch_lines[j][1].replace("?", "⁇")
-                True_pred = line_here.split("⁇")[1].replace(" ", "") + "⁇" + pred2
+                # True_pred = line_here.split("⁇")[1].replace(" ", "") + "⁇" + pred2
+                True_pred = line_here.split("⁇")[1] + " ⁇ " + pred2
                 true_output_dict[original_indices[j]] = True_pred
 
     # Sort predictions and true output back to original order
@@ -491,7 +492,7 @@ elif args.mode == "inequality_evaluate4":
 
     # Evaluate substitutions after processing all batches
     predictions = [predictions_dict[i] for i in sorted_indices]
-    total, correct = utils.evaluate_substitutions(args.evaluate_corpus_path, predictions)
+    total, correct = utils.evaluate_substitutions(args.evaluate_corpus_path, predictions, args.sympy)
 
     if total > 0:
         print(f"Correct: {correct} out of {total}: {correct / total * 100:.2f}%")
