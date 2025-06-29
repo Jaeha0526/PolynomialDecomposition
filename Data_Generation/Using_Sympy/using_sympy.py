@@ -65,7 +65,7 @@ def polynomial_to_prefix_tokens(poly, variable):
             return 0
         return sympy.degree(term, variable)
     
-    terms = sorted(terms, key=get_degree, reverse=True)
+    terms = sorted(terms, key=get_degree, reverse=False)
     
     # Convert each term to its token representation
     def term_to_tokens(term):

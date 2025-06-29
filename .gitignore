@@ -2,4 +2,7 @@
 venv
 wandb
 __pycache__
-data_storage/outputs
+data_storage/outputs/
+data_storage/dataset/single_variable/
+data_storage/dataset/predictions/
+data_storage/predictions/

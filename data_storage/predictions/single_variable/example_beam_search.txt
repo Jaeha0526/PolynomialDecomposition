@@ -1,224 +1,224 @@
-+*N9^bP2+*N12bN20&+*N8^aP2+*N13aP11
++*P11^bP2+*P9bP7&+*P10^aP2+*N8aN7
 ⁇False
-+*P8^bP2+*N17bP19&+*P14^aP2+*N16aN1
++*N18^bP2+*N3bN12&+*P18^aP2+*P10aN9
 ⁇False
-+*P7^bP2+*P15bP3&+*P6^aP2+*P15aP2
++*N19^bP2+*P14bN11&+*P14^aP2P3
 ⁇False
-+*N1^bP2+*N1bN7&+*N6^aP2+*P17aN6
++*P15^bP2+*N3bN14&+*P11^aP2+*P5aN10
 ⁇False
-+*N7^bP2P4&+*N8^aP2+*P9aP7
++*N10^bP2+*P5bP11&+*N1^aP2+*N7aN19
 ⁇False
-+*P12^bP2+*N19bP10&+*P15^aP2+*P2aP9
++*N11^bP2+*P2bN11&+*P14^aP2+*N1aN16
 ⁇False
-+*N4^bP2+*N18bN14&+*N6^aP2+*N13aN16
++*N10^bP2*P12b&+*N13^aP2+*P4aP20
 ⁇False
-+*N10^bP2+*N11bN14&+*P18^aP2+*N20aP20
++*P2^bP2+*N16bP4&+*N16^aP2+*N18aP18
 ⁇False
-+*N8^bP2+*P3bN10&+*N4^aP2+*N13aP19
++*P20^bP2+*N8bP18&+*P19^aP2+*P13aP15
 ⁇False
-+*P11^bP2+*P8bN19&+*N14^aP2+*P17aN10
++*N2^bP2+*N20bP10&+*P16^aP2+*N6aP20
 ⁇False
-+*N14^bP2+*N9bN6&+*N18^aP2+*N20aP4
++*P18^bP2+*P17bN1&+*N20^aP2+*P17aP4
 ⁇False
-+*P7^bP2+*N15bP7&+*N12^aP2+*N7aP14
++*P11^bP2+*P18bP17&+*N6^aP2+*N17aN12
 ⁇False
-+*P9^bP2+*N12bP13&+*P9^aP2+*P11aN3
++*P7^bP2+*N18bP7&+*N5^aP2+*P2aN13
 ⁇False
-+*N14^bP2+*P14bP2&+*N11^aP2N13
++*P19^bP2+*P14bP13&+*N8^aP2+*N6aN14
 ⁇False
-+*P10^bP2+*N13bN1&+*N18^aP2+*P12aN5
++*N9^bP2+*N15bP20&+*P14^aP2+*N15aP20
 ⁇False
-+*P17^bP2+*P17bN8&+*P6^aP2+*N17aN12
++*N9^bP2+*P8bN16&+*P12^aP2+*N16aN5
 ⁇False
-+*P15^bP2+*P15bP19&+*P12^aP2+*P20aP6
++*N14^bP2+*P14bP12&+*N19^aP2+*P5aN18
 ⁇False
-+*N20^bP2+*N6bN17&+*P13^aP2+*P17aN1
++*P9^bP2+*P13bN17&+*P12^aP2+*N4aN16
 ⁇False
-+*N13^bP2+*N4bN6&+*P19^aP2+*P7aN16
++*P4^bP2+*N16bP19&+*N10^aP2+*P18aN14
 ⁇False
-+*N3^bP2+*N10bP12&+*N9^aP2+*N14aN20
++*P5^bP2+*N12bP4&+*P14^aP2+*P16aN18
 ⁇False
-+*N15^bP2*P13b&+*P8^aP2+*P14aN2
++*N6^bP2+*P18bN8&+*N8^aP2+*P19aP19
 ⁇False
-+*P8^bP2+*N12bP5&+*N19^aP2+*N8aP6
++*N10^bP2+*N19bN17&+*N14^aP2+*P4aN16
 ⁇False
-+*P2^bP2+*P19bP17&+*N9^aP2+*N3aN20
++*P13^bP2+*P17bN3&+*N16^aP2+*P6aN7
 ⁇False
-+*P1^bP2+*P16bN8&+*N13^aP2+*N17aP15
++*P1^bP2+*P16bN15&+*P18^aP2+*P5aP3
 ⁇False
-+*N7^bP2+*P18bN2&+*N19^aP2+*N1aP8
++*P1^bP2+*P12bN20&+*N18^aP2+*P17aP19
 ⁇False
-+*N18^bP2+*N2bN10&+*N11^aP2+*P19aN16
++*P7^bP2+*N3bN5&+*P10^aP2+*P16aN14
 ⁇False
-+*P16^bP2+*P4bP5&+*P7^aP2+*N6aP16
++*P1^bP2+*P17bN11&+*N17^aP2+*N19aP2
 ⁇False
-+*N11^bP2+*N15bN15&+*N17^aP2+*P18aN13
++*N18^bP2+*N12bP13&+*P1^aP2+*N13aP5
 ⁇False
-+*P20^bP2+*N9bN7&+*P6^aP2+*N10aP17
++*P12^bP2+*N10bN14&+*P19^aP2+*N1aN3
 ⁇False
-+*N5^bP2+*P11bP11&+*P8^aP2+*N12aN7
++*N7^bP2+*N7bP13&+*P7^aP2+*N8aN10
 ⁇False
-+*P12^bP2+*P4bP9&+*P9^aP2+*P12aP16
++*P1^bP2+*N20bP13&+*P15^aP2+*N5aN8
 ⁇False
-+*P11^bP2+*P13bP13&+*P19^aP2+*N3aP4
++*N6^bP2+*N18bP10&+*N3^aP2+*N14aN10
 ⁇False
-+*N5^bP2+*N9bN8&+*P19^aP2+*N19aP9
++*N17^bP2N9&+*P14^aP2+*P15aN19
 ⁇False
-+*P2^bP2+*N9bP10&+*N2^aP2+*P4aP8
++*N4^bP2+*N13bN11&+*P14^aP2+*P9aP4
 ⁇False
-+*N1^bP2+*P14bP11&+*N3^aP2+*N20aN3
++*N9^bP2+*P7bP17&+*N16^aP2+*N9aP9
 ⁇False
-+*N6^bP2+*P12bN8&+*P2^aP2+*N9aP6
++*N17^bP2+*N11bN9&+*P11^aP2+*P8aN17
 ⁇False
-+*N14^bP2+*N1bN11&+*P13^aP2+*N13aP3
++*N20^bP2+*N12bP12&+*N19^aP2+*N4aN10
+⁇ + * N 2 0 ^ b P 2 + * N 1 2 b P 1 2 & + * N 1 9 ^ a P 2 + * N 4 a N 1 0   RANK[2]
++*N8^bP2+*P20bN9&+*P18^aP2+*N4aP20
 ⁇False
-+*P13^bP2+*N2bP2&+*P4^aP2+*P7aN1
++*P2^bP2+*P19bN4&+*P5^aP2N17
 ⁇False
-+*N7^bP2+*N13bN14&+*P6^aP2+*N16aN1
++*N17^bP2+*P10bN19&+*P3^aP2+*N10aP14
 ⁇False
-+*N5^bP2+*N8bP5&+*P13^aP2+*P13aN15
++*N11^bP2+*P4bN9&+*N10^aP2+*N8aP16
 ⁇False
-+*N7^bP2+*N14bP17&+*N8^aP2+*P19aP2
++*P3^bP2+*N18bP19&+*N3^aP2+*N3aN16
 ⁇False
-+*N9^bP2+*P8bP5&+*P10^aP2+*N10aP8
++*N11^bP2+*P13bN4&+*P14^aP2+*N5aP6
 ⁇False
-+*P6^bP2+*N5bP15&+*N17^aP2+*N8aP8
++*N14^bP2+*P2bP13&+*P12^aP2+*N20aP6
 ⁇False
-+*N5^bP2+*N9bP20&+*N5^aP2+*N17aP1
++*N9^bP2+*P15bN6&+*P7^aP2+*N15aN9
 ⁇False
-+*P5^bP2+*N20bP14&+*N4^aP2+*P2aP19
++*N12^bP2+*N9bP17&+*P1^aP2+*N19aN3
 ⁇False
-+*N16^bP2+*N16bP8&+*P10^aP2+*N1aN5
++*P20^bP2+*P4bP17&+*N7^aP2+*N20aN3
 ⁇False
-+*N17^bP2+*N20bN14&+*N20^aP2+*N19aP12
++*N16^bP2+*P17bN5&+*N11^aP2+*N9aP17
 ⁇False
-+*N18^bP2+*N3bP1&+*P1^aP2+*N11aN20
++*P6^bP2+*N19bP19&+*N5^aP2+*N8aP16
 ⁇False
-+*N11^bP2+*N11bP11&+*N5^aP2+*P19aN2
-⁇False
-+*N13^bP2+*P9bN10&+*N4^aP2+*P12aN15
++*P6^bP2+*P3bP15&+*P9^aP2+*N18aP18
 ⁇False
 Statistics at line 49 :
 Beam width 1: 0 out of 50: 0.00%
-Beam width 2: 0 out of 50: 0.00%
-Beam width 3: 0 out of 50: 0.00%
-Beam width 4: 0 out of 50: 0.00%
-Beam width 5: 0 out of 50: 0.00%
-Beam width 6: 0 out of 50: 0.00%
-Beam width 7: 0 out of 50: 0.00%
-Beam width 8: 0 out of 50: 0.00%
-Beam width 9: 0 out of 50: 0.00%
-Beam width 10: 0 out of 50: 0.00%
+Beam width 2: 1 out of 50: 2.00%
+Beam width 3: 1 out of 50: 2.00%
+Beam width 4: 1 out of 50: 2.00%
+Beam width 5: 1 out of 50: 2.00%
+Beam width 6: 1 out of 50: 2.00%
+Beam width 7: 1 out of 50: 2.00%
+Beam width 8: 1 out of 50: 2.00%
+Beam width 9: 1 out of 50: 2.00%
+Beam width 10: 1 out of 50: 2.00%
 
-+*P20^bP2+*P8bN4&+*N9^aP2+*P19aN13
++*P16^bP2+*N4bP8&+*P14^aP2+*P19aN19
 ⁇False
-+*N13^bP2+*P13bP7&+*P7^aP2+*P8aP3
++*N8^bP2+*P6bN4&+*N8^aP2+*P2aP3
 ⁇False
-+*N12^bP2+*P13bN2&+*N4^aP2+*N20aN9
++*P1^bP2+*N17bN10&+*N1^aP2+*N8aP1
 ⁇False
-+*P18^bP2+*N16bP10&+*N13^aP2+*N16aP10
++*P10^bP2+*P2bN15&+*P5^aP2+*N6aP15
 ⁇False
-+*P10^bP2+*N14bN4&+*P8^aP2+*N15aP9
++*P8^bP2+*N1bP18&+*N8^aP2*P19a
 ⁇False
-+*P6^bP2+*N9bP1&+*N8^aP2+*P4aN5
++*P2^bP2+*N2bN18&+*N17^aP2+*N18aP15
 ⁇False
-+*N18^bP2+*N7bN5&+*N4^aP2+*P9aN12
++*N8^bP2+*P15bN19&+*P20^aP2+*P18aN15
 ⁇False
-+*N11^bP2+*P3bP18&+*P1^aP2+*P9aP6
++*P17^bP2+*N7bN16&+*P8^aP2+*N17aP3
 ⁇False
-+*P16^bP2+*P18bP18&+*P15^aP2+*P16aP20
++*P2^bP2+*N12bN10&+*P5^aP2+*P3aN9
 ⁇False
-+*P8^bP2+*N7bP8&+*P1^aP2+*N12aN7
++*P8^bP2+*P10bN11&+*N1^aP2+*P2aP13
 ⁇False
-+*N14^bP2+*P19bP4&+*N20^aP2+*P18aN1
++*N12^bP2+*N20bP15&+*P19^aP2+*P1aN4
 ⁇False
-+*N6^bP2+*P3bP8&+*N7^aP2+*N20aP12
++*P3^bP2+*N18bN14&+*N6^aP2+*N2aP4
 ⁇False
-+*P9^bP2+*N11bP8&+*N13^aP2+*P14aP20
++*N5^bP2*N4b&+*N9^aP2+*P10aN3
 ⁇False
-+*N9^bP2+*P10bP18&+*N19^aP2+*N10aN9
++*N19^bP2+*P17bP1&+*P12^aP2+*P14aN18
 ⁇False
-+*N6^bP2+*N2bN6&+*P9^aP2+*N11aN9
++*P14^bP2+*P13bN6&+*N4^aP2+*P3aN19
 ⁇False
-+*N2^bP2+*N6bP15&+*N4^aP2+*N5aN7
++*N17^bP2+*N10bP13&+*P14^aP2+*N15aN5
 ⁇False
-+*P14^bP2+*N11bN16&+*P13^aP2+*N19aP20
++*N4^bP2+*P13bP4&+*P19^aP2+*P3aP20
 ⁇False
-+*N7^bP2+*N10bN15&+*P20^aP2+*N15aP15
++*N17^bP2+*N10bN16&+*N14^aP2+*P14aN2
 ⁇False
-+*N18^bP2+*P8bP19&+*N10^aP2+*N8aP4
++*P9^bP2+*N3bN18&+*N20^aP2+*P20aN11
 ⁇False
-+*N7^bP2+*P6bN5&+*N19^aP2+*N9aP11
++*N16^bP2+*P13bP6&+*N11^aP2+*N3aN7
 ⁇False
-+*P12^bP2+*N8bN16&+*P14^aP2+*P8aP7
++*P5^bP2+*P3bN17&+*N6^aP2+*N20aP16
 ⁇False
-+*P13^bP2+*N16bN4&+*N12^aP2+*P12aP4
++*N7^bP2+*N18bP8&+*P19^aP2+*N19aN1
 ⁇False
-+*N9^bP2+*N1bP8&+*N7^aP2N3
++*N18^bP2+*N5bN8&+*N12^aP2*N11a
 ⁇False
-+*N9^bP2+*N16bP14&+*P18^aP2+*N9aN7
++*N6^bP2+*N14bN19&+*P6^aP2+*P19aN9
 ⁇False
-+*P3^bP2+*P4bP17&+*P16^aP2+*P19aP19
++*N11^bP2+*P7bN9&+*P18^aP2+*P2aN13
 ⁇False
-+*N16^bP2+*N11bN10&+*N12^aP2+*N17aN18
++*N14^bP2+*N16bN11&+*P3^aP2+*P17aP3
 ⁇False
-+*N18^bP2+*P3bP5&+*P15^aP2+*P6aP8
++*P15^bP2+*P16bN13&+*N10^aP2+*P14aP19
 ⁇False
-+*P6^bP2+*N19bP16&+*P6^aP2+*P11aN10
++*P16^bP2+*P7bN10&+*P20^aP2+*P2aN3
 ⁇False
-+*N7^bP2+*P16bN17&+*P6^aP2N11
++*N15^bP2+*P16bP6&+*N6^aP2+*N14aN2
 ⁇False
-+*P6^bP2+*N6bP7&+*P10^aP2+*P3aP6
++*P13^bP2+*N14bP11&+*N3^aP2+*P7aN20
 ⁇False
-+*N15^bP2+*P12bP2&+*P10^aP2+*N12aP18
++*P8^bP2+*N8bN5&+*N8^aP2+*P11aN16
 ⁇False
-+*P10^bP2+*P6bP4&+*N7^aP2+*P20aN4
++*N9^bP2+*N19bP4&+*N4^aP2+*P6aP5
 ⁇False
-+*P17^bP2+*P1bN12&+*N17^aP2+*N18aN17
++*P3^bP2+*P8bP7&+*P9^aP2+*N19aP13
 ⁇False
-+*P17^bP2+*N5bN7&+*P12^aP2+*P12aP13
++*P5^bP2+*P3bN13&+*N19^aP2+*N18aP5
 ⁇False
-+*N3^bP2+*P17bN17&+*P3^aP2+*N12aP15
++*P19^bP2+*N9bP11&+*N6^aP2+*N14aN6
 ⁇False
-+*N10^bP2+*N19bP5&+*P16^aP2+*P8aP4
++*N17^bP2+*N4bN16&+*P12^aP2+*N7aP7
 ⁇False
-+*N17^bP2+*N19bN15&+*P1^aP2+*N13aN2
++*P19^bP2*N5b&+*N13^aP2+*N12aN9
 ⁇False
-+*P8^bP2*P20b&+*P14^aP2*P4a
++*N9^bP2+*P19bN1&+*N6^aP2+*P14aP14
 ⁇False
-+*P14^bP2*N10b&+*N13^aP2+*N9aN11
++*P3^bP2+*N9bN9&+*P3^aP2+*N19aN18
 ⁇False
-+*N1^bP2+*N10bP14&+*N14^aP2+*P3aN15
++*N9^bP2+*P14bP13&+*N17^aP2+*N18aN9
 ⁇False
-+*P4^bP2+*P14bN16&+*N9^aP2+*N19aN14
++*N10^bP2+*N12bN8&+*N18^aP2+*P13aN17
 ⁇False
-+*N6^bP2+*N10bP7&+*N17^aP2N17
++*N5^bP2+*P10bP10&+*N18^aP2+*P5aN20
 ⁇False
-+*N5^bP2+*N15bN16&+*N1^aP2+*P18aP1
++*P2^bP2+*N18bP1&+*N20^aP2+*N12aN14
 ⁇False
-+*P15^bP2+*N13bN2&+*P4^aP2+*P2aP14
++*P12^bP2+*N17bN1&+*P5^aP2+*N1aN14
 ⁇False
-+*N7^bP2+*N9bP13&+*N11^aP2+*N10aN8
++*N19^bP2+*N3bP18&+*N20^aP2+*P8aP10
 ⁇False
-+*N14^bP2+*P13bN6&+*P3^aP2+*N1aP18
++*P20^bP2+*P2bP9&+*N3^aP2+*P7aP17
 ⁇False
-+*N17^bP2+*P20bN11&+*P1^aP2+*P7aN8
++*P10^bP2+*N16bP4&+*P7^aP2+*P9aN10
 ⁇False
-+*N16^bP2+*N9bN8&+*N15^aP2+*P1aP7
++*P3^bP2+*N16bN15&+*N7^aP2+*N20aN1
 ⁇False
-+*N1^bP2+*P8bN11&+*N19^aP2+*P14aP20
++*N15^bP2*P9b&+*N4^aP2+*P17aN2
 ⁇False
-+*N17^bP2+*N5bP16&+*N7^aP2+*P13aN1
++*P7^bP2+*P1bN19&+*P16^aP2+*P3aN16
 ⁇False
 Statistics at line 99 :
 Beam width 1: 0 out of 100: 0.00%
-Beam width 2: 0 out of 100: 0.00%
-Beam width 3: 0 out of 100: 0.00%
-Beam width 4: 0 out of 100: 0.00%
-Beam width 5: 0 out of 100: 0.00%
-Beam width 6: 0 out of 100: 0.00%
-Beam width 7: 0 out of 100: 0.00%
-Beam width 8: 0 out of 100: 0.00%
-Beam width 9: 0 out of 100: 0.00%
-Beam width 10: 0 out of 100: 0.00%
+Beam width 2: 1 out of 100: 1.00%
+Beam width 3: 1 out of 100: 1.00%
+Beam width 4: 1 out of 100: 1.00%
+Beam width 5: 1 out of 100: 1.00%
+Beam width 6: 1 out of 100: 1.00%
+Beam width 7: 1 out of 100: 1.00%
+Beam width 8: 1 out of 100: 1.00%
+Beam width 9: 1 out of 100: 1.00%
+Beam width 10: 1 out of 100: 1.00%
 
