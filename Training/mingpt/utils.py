@@ -112,6 +112,7 @@ def evaluate_substitutions(filepath, predicted_substitutions, sympy=False):
         zip(true_substitutions, predicted_substitutions))))
     else:
         true_substitutions = [x[1].replace(' ','') for x in lines]
+        predicted_substitutions = [x.replace(' ','') for x in predicted_substitutions]
         correct = len(list(filter(lambda x: x[0] == x[1],
         zip(true_substitutions, predicted_substitutions))))
     return (float(total),float(correct))
@@ -143,8 +144,8 @@ def is_valid_expression_sympy2(target_str: str, pred_str: str) -> bool:
 
         # 3. Substitute into the base polynomial
         b = sympy.symbols('b')
-        final_poly = outer_poly.xreplace({b: inner_poly})
-        target_poly = target_poly_outer.xreplace({b: target_poly_inner})
+        final_poly = outer_poly.xreplace({b: inner_poly}).expand()
+        target_poly = target_poly_outer.xreplace({b: target_poly_inner}).expand()
 
         # 4. Check for equivalence
         # Simplify the difference and check if it's zero

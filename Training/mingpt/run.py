@@ -439,6 +439,7 @@ elif args.mode == "inequality_evaluate4":
 
     predictions = []
     lines = open(args.evaluate_corpus_path, encoding="utf-8").readlines()
+    lines = lines[:args.max_test]
 
     # Group lines by length to avoid padding
     grouped_lines = group_lines_by_length_with_index(lines)
@@ -475,7 +476,8 @@ elif args.mode == "inequality_evaluate4":
                 pred2 = completion.split("⁇")[1]
                 predictions.append(pred_str)
 
-                predictions_dict[original_indices[j]] = pred_str
+                # predictions_dict[original_indices[j]] = pred_str
+                predictions_dict[original_indices[j]] = pred2
 
                 line_here = batch_lines[j][1].replace("?", "⁇")
                 # True_pred = line_here.split("⁇")[1].replace(" ", "") + "⁇" + pred2
