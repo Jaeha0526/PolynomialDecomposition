@@ -180,7 +180,7 @@ def parse_prefix_to_sympy(tokens: List[str]) -> sympy.Expr:
     return stack[0]
 
 
-def generate_dataset_line(degree1=None, degree2=None, debug=False):
+def generate_dataset_line(degree1=None, degree2=None, debug=False, inner_only=False):
     """Generate one line of the dataset."""
     a = sympy.Symbol('a')
     b = sympy.Symbol('b')
@@ -200,11 +200,15 @@ def generate_dataset_line(degree1=None, degree2=None, debug=False):
 
     # Convert to tokenized prefix form
     result_tokens = polynomial_to_prefix_tokens(expanded_result, a)
-    poly1_tokens = polynomial_to_prefix_tokens(poly1, b)
     poly2_tokens = polynomial_to_prefix_tokens(poly2, a)
-
-    # Format the line
-    line = f"{result_tokens} ⁇ {poly1_tokens} & {poly2_tokens}"
+    
+    # Format the line based on inner_only parameter
+    if inner_only:
+        line = f"{result_tokens} ⁇ {poly2_tokens}"
+    else:
+        poly1_tokens = polynomial_to_prefix_tokens(poly1, b)
+        line = f"{result_tokens} ⁇ {poly1_tokens} & {poly2_tokens}"
+    
     if debug:
       print(f"Result: {line}")
 
@@ -212,7 +216,7 @@ def generate_dataset_line(degree1=None, degree2=None, debug=False):
 
 
 # Generate 1M training dataset and 9 test datasets in the file_directory
-def generate_expressions_for_degrees(degree1, degree2, num_samples, seen_expressions=None):
+def generate_expressions_for_degrees(degree1, degree2, num_samples, seen_expressions=None, inner_only=False):
     """Generate unique expressions for specific degrees."""
     if seen_expressions is None:
         seen_expressions = set()
@@ -225,7 +229,7 @@ def generate_expressions_for_degrees(degree1, degree2, num_samples, seen_express
 
     while len(expressions) < num_samples and attempts < max_attempts:
         try:
-            line, (poly1, poly2, result) = generate_dataset_line(degree1, degree2)
+            line, (poly1, poly2, result) = generate_dataset_line(degree1, degree2, inner_only=inner_only)
 
             # Create a unique identifier for this expression combination
             expr_id = (str(poly1), str(poly2))
@@ -247,7 +251,7 @@ def generate_expressions_for_degrees(degree1, degree2, num_samples, seen_express
 
 
 
-def generate_all_datasets(file_directory="datasets", num_train=100000, num_test=3000, num_valid=128):
+def generate_all_datasets(file_directory="datasets", num_train=100000, num_test=3000, num_valid=128, inner_only=False):
     """Generate all training and test datasets ensuring no overlap."""
     seen_expressions = set()
     all_expressions = []
@@ -265,7 +269,7 @@ def generate_all_datasets(file_directory="datasets", num_train=100000, num_test=
     # Generate expressions for each test dataset (extra samples to ensure we have enough)
     for deg1, deg2 in degree_combinations:
         expressions, seen_expressions = generate_expressions_for_degrees(
-            deg1, deg2, 2*num_test, seen_expressions  # Generate extra
+            deg1, deg2, 2*num_test, seen_expressions, inner_only=inner_only  # Generate extra
         )
 
         # Take first num_test for test set
@@ -297,7 +301,7 @@ def generate_all_datasets(file_directory="datasets", num_train=100000, num_test=
                 # Use random degrees for training
                 deg1 = random.choice([2, 3, 4])
                 deg2 = random.choice([2, 3, 4]) 
-                line, (poly1, poly2, result) = generate_dataset_line(degree1=deg1, degree2=deg2)  # Random degrees
+                line, (poly1, poly2, result) = generate_dataset_line(degree1=deg1, degree2=deg2, inner_only=inner_only)  # Random degrees
 
                 # Create a unique identifier for this expression combination
                 expr_id = (str(poly1), str(poly2))
