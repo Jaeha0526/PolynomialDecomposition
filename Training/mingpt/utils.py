@@ -116,7 +116,7 @@ def evaluate_substitutions(filepath, predicted_substitutions, sympy=False):
         zip(true_substitutions, predicted_substitutions))))
     return (float(total),float(correct))
 
-def is_valid_expression_sympy_single(input_str: str, pred_str: str) -> bool:
+def is_valid_expression_sympy_single(input_str: str, pred_str: str, return_details: bool = False):
     """
     Validates the predicted inner polynomial for single variable polynomial decomposition.
     Given the expanded form and predicted inner polynomial, performs polynomial division
@@ -134,38 +134,73 @@ def is_valid_expression_sympy_single(input_str: str, pred_str: str) -> bool:
         # 3. Get the variable used in the polynomials
         a = sympy.symbols('a')
         
-        # 4. Perform polynomial division: expanded_poly / inner_poly
-        # This should give us the outer polynomial if the decomposition is valid
+        # 4. Perform recursive polynomial division to find outer polynomial
         try:
-            quotient, remainder = sympy.div(expanded_poly, inner_poly, domain='ZZ')
+            b = sympy.symbols('b')
             
-            # 5. Check if the remainder is zero (exact division)
-            is_valid = (remainder == 0)
+            # Recursive division algorithm
+            current_poly = expanded_poly
+            outer_coeffs = []  # Coefficients for b^0, b^1, b^2, ...
+            inner_degree = sympy.degree(inner_poly, a)
             
-            if is_valid:
-                # Verify by substituting back: outer(inner) should equal expanded
-                b = sympy.symbols('b')
-                # Replace 'a' with 'b' in quotient to get outer polynomial in terms of b
-                outer_poly = quotient.subs(a, b)
-                # Substitute inner into outer
-                reconstructed = outer_poly.subs(b, inner_poly).expand()
-                # Double-check that reconstruction matches
-                is_valid = (sympy.simplify(reconstructed - expanded_poly) == 0)
+            step = 0
+            while sympy.degree(current_poly, a) >= inner_degree:
+                quotient, remainder = sympy.div(current_poly, inner_poly, domain='ZZ')
+                outer_coeffs.append(remainder)  # This becomes coefficient of b^step
+                current_poly = quotient
+                step += 1
                 
-                print(f"[SymPy Valid Single] Expanded: {expanded_poly}, Inner: {inner_poly}, Outer: {outer_poly}, Valid: {is_valid}")
-            else:
-                print(f"[SymPy Valid Single] Division has remainder. Expanded: {expanded_poly}, Inner: {inner_poly}, Remainder: {remainder}")
+                # Safety check to prevent infinite loops
+                if step > 10:  # Reasonable upper bound for polynomial degrees
+                    break
+            
+            # The final quotient (if degree < inner_degree) becomes the highest degree term
+            if current_poly != 0:
+                outer_coeffs.append(current_poly)
+            
+            # Build the outer polynomial: sum of remainder_i * b^i + final_quotient * b^(highest_power)
+            outer_poly = 0
+            for i, coeff in enumerate(outer_coeffs):
+                if i == len(outer_coeffs) - 1 and len(outer_coeffs) > 1:
+                    # Last coefficient is the final quotient (highest degree term)
+                    outer_poly += coeff * (b ** i)
+                else:
+                    outer_poly += coeff * (b ** i)
+            
+            # Check if the outer polynomial is valid (no 'a' variables should remain)
+            outer_vars = outer_poly.free_symbols
+            has_a_variable = a in outer_vars
+            is_valid = not has_a_variable
+            
+            # Verify by substituting back
+            if is_valid:
+                reconstructed = outer_poly.subs(b, inner_poly).expand()
+                reconstruction_valid = (sympy.simplify(reconstructed - expanded_poly) == 0)
+                is_valid = reconstruction_valid
+            
+            print(f"[SymPy Valid Single] Expanded: {expanded_poly}")
+            print(f"                     Inner: {inner_poly}")
+            print(f"                     Outer: {outer_poly}")
+            print(f"                     Has 'a' vars: {has_a_variable}")
+            print(f"                     Valid: {is_valid}")
+            
+            if return_details:
+                return is_valid, outer_poly, 0  # No remainder in recursive division
             
             return is_valid
             
         except Exception as div_error:
             print(f"[SymPy Valid Single] Division failed: {div_error}")
+            if return_details:
+                return False, None, None
             return False
 
     except Exception as e:
         print(f"[SymPy Valid Single] Error during validation: {e}")
         print(f"  Input Str: {input_str}")
         print(f"  Pred Str: {pred_str}")
+        if return_details:
+            return False, None, None
         return False
 
 
