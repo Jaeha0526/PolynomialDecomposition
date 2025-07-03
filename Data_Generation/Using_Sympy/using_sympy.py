@@ -291,59 +291,8 @@ def generate_batch_worker(args):
     return expressions, local_seen, worker_id
 
 
-def generate_expressions_for_degrees_parallel(degree1, degree2, num_samples, seen_expressions=None, inner_only=False, num_workers=None):
-    """Generate unique expressions for specific degrees using multiprocessing."""
-    if seen_expressions is None:
-        seen_expressions = set()
-    
-    if num_workers is None:
-        # Use reasonable default
-        total_cpus = os.cpu_count()
-        if total_cpus >= 64:
-            num_workers = 64
-        else:
-            num_workers = max(1, total_cpus - 1)
-    
-    print(f"  Generating expressions for degrees ({degree1}, {degree2}) using {num_workers} workers...")
-    
-    # Calculate batch size per worker
-    batch_size = max(1, num_samples // num_workers)
-    
-    # Prepare arguments for each worker
-    worker_args = []
-    for i in range(num_workers):
-        # Last worker handles any remainder
-        current_batch_size = batch_size + (num_samples % num_workers if i == num_workers - 1 else 0)
-        worker_args.append((degree1, degree2, current_batch_size, inner_only, i, False))  # False for no progress (too noisy for test data)
-    
-    # Run parallel generation
-    with mp.Pool(num_workers) as pool:
-        results = pool.map(generate_batch_worker, worker_args)
-    
-    # Combine results from all workers
-    all_expressions = []
-    all_seen = set()
-    
-    for worker_expressions, worker_seen, worker_id in results:
-        all_expressions.extend(worker_expressions)
-        all_seen.update(worker_seen)
-    
-    # Remove duplicates across workers
-    unique_expressions = []
-    final_seen = seen_expressions.copy()
-    
-    for expr_data in all_expressions:
-        line, expr_id, deg1, deg2 = expr_data
-        if expr_id not in final_seen:
-            final_seen.add(expr_id)
-            unique_expressions.append(expr_data)
-    
-    # Take only the requested number of samples
-    unique_expressions = unique_expressions[:num_samples]
-    
-    print(f"    Generated {len(unique_expressions)}/{num_samples} unique expressions")
-    
-    return unique_expressions, final_seen
+# Note: generate_expressions_for_degrees_parallel function removed as test dataset generation
+# is now handled directly in generate_all_datasets_parallel for better efficiency
 
 
 
@@ -389,22 +338,65 @@ def generate_all_datasets_parallel(file_directory="datasets", num_train=100000, 
     ]
 
     print("Step 1: Generating expressions for test datasets in parallel...")
-
-    # Generate expressions for each test dataset using parallel processing
+    
+    # Use fewer workers for test datasets (small batches don't need 128 workers)
+    test_workers = min(32, num_workers // 4)  # Use 1/4 of workers, max 32
+    samples_per_degree = 2 * num_test  # 6000 samples per degree combination
+    
+    print(f"  Using {test_workers} workers for test datasets ({samples_per_degree:,} samples per degree combination)")
+    
+    # Create tasks for all degree combinations to run simultaneously
+    test_tasks = []
+    for i, (deg1, deg2) in enumerate(degree_combinations):
+        # Calculate batch size for this degree combination
+        batch_size = max(100, samples_per_degree // test_workers)
+        
+        # Create worker tasks for this degree combination
+        for worker_id in range(test_workers):
+            current_batch = batch_size
+            if worker_id == test_workers - 1:  # Last worker gets remainder
+                current_batch = samples_per_degree - (batch_size * (test_workers - 1))
+            
+            # Unique worker ID across all degree combinations
+            global_worker_id = i * test_workers + worker_id
+            test_tasks.append((deg1, deg2, current_batch, inner_only, global_worker_id, False))
+    
+    print(f"  Generating ALL 9 test datasets simultaneously using {len(test_tasks)} parallel tasks...")
+    
+    # Run all test dataset generation in parallel
+    with mp.Pool(min(num_workers, len(test_tasks))) as pool:
+        all_test_results = pool.map(generate_batch_worker, test_tasks)
+    
+    # Group results by degree combination
+    degree_results = {deg_combo: [] for deg_combo in degree_combinations}
+    
+    for worker_expressions, worker_seen, worker_id in all_test_results:
+        # Determine which degree combination this worker was working on
+        degree_index = worker_id // test_workers
+        if degree_index < len(degree_combinations):
+            deg_combo = degree_combinations[degree_index]
+            degree_results[deg_combo].extend(worker_expressions)
+    
+    # Process results for each degree combination
     for deg1, deg2 in degree_combinations:
-        expressions, seen_expressions = generate_expressions_for_degrees_parallel(
-            deg1, deg2, 2*num_test, seen_expressions, inner_only=inner_only, num_workers=num_workers
-        )
-
-        # Take first num_test for test set
-        test_expressions[(deg1, deg2)] = expressions[:num_test]
-
-        # Add remaining to training pool
-        if len(expressions) > num_test:
-            all_expressions.extend(expressions[num_test:])
-
+        expressions = degree_results[(deg1, deg2)]
+        
+        # Add unique expressions to seen_expressions and update global seen set
+        unique_expressions = []
+        for expr_data in expressions:
+            line, expr_id, deg1_check, deg2_check = expr_data
+            if expr_id not in seen_expressions:
+                seen_expressions.add(expr_id)
+                unique_expressions.append(expr_data)
+        
+        # Take first num_test for test set, rest goes to training pool
+        test_expressions[(deg1, deg2)] = unique_expressions[:num_test]
+        
+        if len(unique_expressions) > num_test:
+            all_expressions.extend(unique_expressions[num_test:])
+        
         print(f"  Test set ({deg1}, {deg2}): {len(test_expressions[(deg1, deg2)])} samples")
-        print(f"  Added {len(expressions) - num_test} extra samples to training pool")
+        print(f"  Added {max(0, len(unique_expressions) - num_test)} extra samples to training pool")
 
     print(f"\nStep 2: Generating additional training data in parallel...")
     print(f"Current training pool size: {len(all_expressions)}")
