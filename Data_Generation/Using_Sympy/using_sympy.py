@@ -2,6 +2,9 @@
 import sympy
 import random
 import re
+import multiprocessing as mp
+import os
+from functools import partial
 
 # generate single variable polynomial with certain degree and random coefficient
 def generate_random_polynomial(variable, degree, min_coeff=-20, max_coeff=20):
@@ -249,6 +252,238 @@ def generate_expressions_for_degrees(degree1, degree2, num_samples, seen_express
 
     return expressions, seen_expressions
 
+
+def generate_batch_worker(args):
+    """Worker function for parallel batch generation."""
+    degree1, degree2, batch_size, inner_only, worker_id = args
+    
+    expressions = []
+    local_seen = set()
+    attempts = 0
+    max_attempts = batch_size * 10
+    
+    # Set different random seed for each worker to avoid duplicates
+    random.seed(worker_id * 1000 + random.randint(1, 999))
+    
+    while len(expressions) < batch_size and attempts < max_attempts:
+        try:
+            line, (poly1, poly2, result) = generate_dataset_line(degree1, degree2, inner_only=inner_only)
+            
+            # Create a unique identifier for this expression combination
+            expr_id = (str(poly1), str(poly2))
+            
+            if expr_id not in local_seen:
+                local_seen.add(expr_id)
+                expressions.append((line, expr_id, degree1, degree2))
+            
+            attempts += 1
+            
+        except Exception as e:
+            attempts += 1
+            continue
+    
+    return expressions, local_seen
+
+
+def generate_expressions_for_degrees_parallel(degree1, degree2, num_samples, seen_expressions=None, inner_only=False, num_workers=None):
+    """Generate unique expressions for specific degrees using multiprocessing."""
+    if seen_expressions is None:
+        seen_expressions = set()
+    
+    if num_workers is None:
+        # Use reasonable default
+        total_cpus = os.cpu_count()
+        if total_cpus >= 64:
+            num_workers = 64
+        else:
+            num_workers = max(1, total_cpus - 1)
+    
+    print(f"  Generating expressions for degrees ({degree1}, {degree2}) using {num_workers} workers...")
+    
+    # Calculate batch size per worker
+    batch_size = max(1, num_samples // num_workers)
+    
+    # Prepare arguments for each worker
+    worker_args = []
+    for i in range(num_workers):
+        # Last worker handles any remainder
+        current_batch_size = batch_size + (num_samples % num_workers if i == num_workers - 1 else 0)
+        worker_args.append((degree1, degree2, current_batch_size, inner_only, i))
+    
+    # Run parallel generation
+    with mp.Pool(num_workers) as pool:
+        results = pool.map(generate_batch_worker, worker_args)
+    
+    # Combine results from all workers
+    all_expressions = []
+    all_seen = set()
+    
+    for worker_expressions, worker_seen in results:
+        all_expressions.extend(worker_expressions)
+        all_seen.update(worker_seen)
+    
+    # Remove duplicates across workers
+    unique_expressions = []
+    final_seen = seen_expressions.copy()
+    
+    for expr_data in all_expressions:
+        line, expr_id, deg1, deg2 = expr_data
+        if expr_id not in final_seen:
+            final_seen.add(expr_id)
+            unique_expressions.append(expr_data)
+    
+    # Take only the requested number of samples
+    unique_expressions = unique_expressions[:num_samples]
+    
+    print(f"    Generated {len(unique_expressions)}/{num_samples} unique expressions")
+    
+    return unique_expressions, final_seen
+
+
+
+def generate_all_datasets_parallel(file_directory="datasets", num_train=100000, num_test=3000, num_valid=128, inner_only=False, num_cpus=None):
+    """Generate all training and test datasets using multiprocessing for speed.
+    
+    Args:
+        num_cpus: Number of CPU cores to use. If None, auto-detects and uses optimal number.
+                 For large systems (>64 cores), limits to 64 for efficiency.
+                 For smaller systems, uses all available cores.
+    """
+    if num_cpus is None:
+        # Auto-detect optimal number of workers
+        total_cpus = os.cpu_count()
+        if total_cpus >= 64:
+            num_workers = 64  # Cap at 64 for very large systems
+        else:
+            num_workers = max(1, total_cpus - 1)  # Leave 1 core for system
+    else:
+        num_workers = max(1, min(num_cpus, os.cpu_count()))  # Ensure valid range
+    
+    print(f"🚀 Starting parallel dataset generation using {num_workers} workers")
+    print(f"💻 System has {os.cpu_count()} total CPU threads, using {num_workers} workers")
+    
+    seen_expressions = set()
+    all_expressions = []
+    test_expressions = {}
+
+    # Define all degree combinations for test sets
+    degree_combinations = [
+        (2, 2), (2, 3), (2, 4),
+        (3, 2), (3, 3), (3, 4),
+        (4, 2), (4, 3), (4, 4)
+    ]
+
+    print("Step 1: Generating expressions for test datasets in parallel...")
+
+    # Generate expressions for each test dataset using parallel processing
+    for deg1, deg2 in degree_combinations:
+        expressions, seen_expressions = generate_expressions_for_degrees_parallel(
+            deg1, deg2, 2*num_test, seen_expressions, inner_only=inner_only, num_workers=num_workers
+        )
+
+        # Take first num_test for test set
+        test_expressions[(deg1, deg2)] = expressions[:num_test]
+
+        # Add remaining to training pool
+        if len(expressions) > num_test:
+            all_expressions.extend(expressions[num_test:])
+
+        print(f"  Test set ({deg1}, {deg2}): {len(test_expressions[(deg1, deg2)])} samples")
+        print(f"  Added {len(expressions) - num_test} extra samples to training pool")
+
+    print(f"\nStep 2: Generating additional training data in parallel...")
+    print(f"Current training pool size: {len(all_expressions)}")
+
+    # Generate additional random expressions for training until we reach target
+    training_target = num_train + num_valid
+    current_training_size = len(all_expressions)
+    additional_needed = training_target - current_training_size
+
+    if additional_needed > 0:
+        print(f"Generating {additional_needed} additional training expressions using parallel processing...")
+        
+        # Calculate how to distribute the work across degree combinations
+        combinations_cycle = degree_combinations * ((additional_needed // len(degree_combinations)) + 1)
+        
+        # Group work into batches for parallel processing
+        batch_size = max(1000, additional_needed // (num_workers * 4))  # Multiple batches per worker
+        
+        worker_tasks = []
+        remaining = additional_needed
+        
+        for i in range(0, additional_needed, batch_size):
+            current_batch = min(batch_size, remaining)
+            if current_batch <= 0:
+                break
+                
+            # Cycle through degree combinations
+            deg1, deg2 = combinations_cycle[i // batch_size % len(degree_combinations)]
+            worker_tasks.append((deg1, deg2, current_batch, inner_only, i // batch_size))
+            remaining -= current_batch
+        
+        print(f"  Distributing work across {len(worker_tasks)} parallel batches...")
+        
+        # Run parallel generation for training data
+        with mp.Pool(num_workers) as pool:
+            training_results = pool.map(generate_batch_worker, worker_tasks)
+        
+        # Combine training results
+        for worker_expressions, worker_seen in training_results:
+            for expr_data in worker_expressions:
+                line, expr_id, deg1, deg2 = expr_data
+                if expr_id not in seen_expressions and len(all_expressions) < training_target:
+                    seen_expressions.add(expr_id)
+                    all_expressions.append(expr_data)
+        
+        print(f"  Final training pool size: {len(all_expressions)}")
+
+    print(f"\nStep 3: Writing datasets to files...")
+
+    # Write test datasets
+    for deg1, deg2 in degree_combinations:
+        output_file = f"{file_directory}/test_dataset_{deg1}_{deg2}.txt"
+        with open(output_file, 'w') as f:
+            for i, (line_data, _, _, _) in enumerate(test_expressions[(deg1, deg2)]):
+                f.write(line_data)
+                if i < len(test_expressions[(deg1, deg2)]) - 1:
+                    f.write("\n")
+
+        print(f"  Written {output_file} with {len(test_expressions[(deg1, deg2)])} samples")
+
+    training_expressions = all_expressions[:num_train]
+    validation_expressions = all_expressions[num_train:num_train+num_valid]
+
+    # Write training dataset
+    print(f"  Writing training dataset with {len(training_expressions)} samples...")
+    with open(f"{file_directory}/training_dataset.txt", 'w') as f:
+        for i, (line_data, _, _, _) in enumerate(training_expressions):
+            f.write(line_data)
+            if i < len(training_expressions) - 1:
+                f.write("\n")
+
+    # Write validation dataset
+    print(f"  Writing validation dataset with {len(validation_expressions)} samples...")
+    with open(f"{file_directory}/validation_dataset.txt", 'w') as f:
+        for i, (line_data, _, _, _) in enumerate(validation_expressions):
+            f.write(line_data)
+            if i < len(validation_expressions) - 1:
+                f.write("\n")
+
+    print(f"\n✅ Parallel dataset generation complete!")
+    print(f"📊 Training dataset: {len(training_expressions)} samples")
+    print(f"📊 Validation dataset: {len(validation_expressions)} samples")
+    print(f"📊 Test datasets: 9 datasets with {num_test} samples each")
+    print(f"📊 Total unique expressions: {len(seen_expressions)}")
+
+    # Print degree distribution in training data
+    degree_counts = {}
+    for _, _, deg1, deg2 in training_expressions:
+        key = (deg1, deg2)
+        degree_counts[key] = degree_counts.get(key, 0) + 1
+
+    print(f"\n📈 Training data degree distribution:")
+    for (deg1, deg2), count in sorted(degree_counts.items()):
+        print(f"  ({deg1}, {deg2}): {count} samples")
 
 
 def generate_all_datasets(file_directory="datasets", num_train=100000, num_test=3000, num_valid=128, inner_only=False):
