@@ -255,7 +255,7 @@ def generate_expressions_for_degrees(degree1, degree2, num_samples, seen_express
 
 def generate_batch_worker(args):
     """Worker function for parallel batch generation."""
-    degree1, degree2, batch_size, inner_only, worker_id = args
+    degree1, degree2, batch_size, inner_only, worker_id, show_progress = args
     
     expressions = []
     local_seen = set()
@@ -264,6 +264,8 @@ def generate_batch_worker(args):
     
     # Set different random seed for each worker to avoid duplicates
     random.seed(worker_id * 1000 + random.randint(1, 999))
+    
+    progress_interval = max(100, batch_size // 10)  # Show progress every 10% or 100 samples
     
     while len(expressions) < batch_size and attempts < max_attempts:
         try:
@@ -275,6 +277,10 @@ def generate_batch_worker(args):
             if expr_id not in local_seen:
                 local_seen.add(expr_id)
                 expressions.append((line, expr_id, degree1, degree2))
+                
+                # Show progress for this worker
+                if show_progress and len(expressions) % progress_interval == 0:
+                    print(f"    Worker {worker_id}: {len(expressions)}/{batch_size} samples")
             
             attempts += 1
             
@@ -282,7 +288,7 @@ def generate_batch_worker(args):
             attempts += 1
             continue
     
-    return expressions, local_seen
+    return expressions, local_seen, worker_id
 
 
 def generate_expressions_for_degrees_parallel(degree1, degree2, num_samples, seen_expressions=None, inner_only=False, num_workers=None):
@@ -308,7 +314,7 @@ def generate_expressions_for_degrees_parallel(degree1, degree2, num_samples, see
     for i in range(num_workers):
         # Last worker handles any remainder
         current_batch_size = batch_size + (num_samples % num_workers if i == num_workers - 1 else 0)
-        worker_args.append((degree1, degree2, current_batch_size, inner_only, i))
+        worker_args.append((degree1, degree2, current_batch_size, inner_only, i, False))  # False for no progress (too noisy for test data)
     
     # Run parallel generation
     with mp.Pool(num_workers) as pool:
@@ -318,7 +324,7 @@ def generate_expressions_for_degrees_parallel(degree1, degree2, num_samples, see
     all_expressions = []
     all_seen = set()
     
-    for worker_expressions, worker_seen in results:
+    for worker_expressions, worker_seen, worker_id in results:
         all_expressions.extend(worker_expressions)
         all_seen.update(worker_seen)
     
@@ -346,14 +352,22 @@ def generate_all_datasets_parallel(file_directory="datasets", num_train=100000, 
     
     Args:
         num_cpus: Number of CPU cores to use. If None, auto-detects and uses optimal number.
-                 For large systems (>64 cores), limits to 64 for efficiency.
+                 For large systems (>128 cores), limits to 128 for efficiency.
                  For smaller systems, uses all available cores.
     """
+    # Set multiprocessing start method for better Jupyter compatibility
+    try:
+        mp.set_start_method('spawn', force=True)
+    except RuntimeError:
+        pass  # Already set
+    
     if num_cpus is None:
         # Auto-detect optimal number of workers
         total_cpus = os.cpu_count()
-        if total_cpus >= 64:
-            num_workers = 64  # Cap at 64 for very large systems
+        if total_cpus >= 128:
+            num_workers = 128  # Cap at 128 for very large systems
+        elif total_cpus >= 64:
+            num_workers = min(64, total_cpus // 2)  # Use half for large systems
         else:
             num_workers = max(1, total_cpus - 1)  # Leave 1 core for system
     else:
@@ -361,6 +375,7 @@ def generate_all_datasets_parallel(file_directory="datasets", num_train=100000, 
     
     print(f"🚀 Starting parallel dataset generation using {num_workers} workers")
     print(f"💻 System has {os.cpu_count()} total CPU threads, using {num_workers} workers")
+    print(f"🔧 Multiprocessing method: {mp.get_start_method()}")
     
     seen_expressions = set()
     all_expressions = []
@@ -400,42 +415,54 @@ def generate_all_datasets_parallel(file_directory="datasets", num_train=100000, 
     additional_needed = training_target - current_training_size
 
     if additional_needed > 0:
-        print(f"Generating {additional_needed} additional training expressions using parallel processing...")
+        print(f"Generating {additional_needed:,} additional training expressions using {num_workers} parallel workers...")
         
-        # Calculate how to distribute the work across degree combinations
-        combinations_cycle = degree_combinations * ((additional_needed // len(degree_combinations)) + 1)
+        # Calculate optimal batch size per worker
+        batch_size = max(1000, additional_needed // num_workers)
         
-        # Group work into batches for parallel processing
-        batch_size = max(1000, additional_needed // (num_workers * 4))  # Multiple batches per worker
-        
+        # Create exactly num_workers tasks
         worker_tasks = []
         remaining = additional_needed
         
-        for i in range(0, additional_needed, batch_size):
-            current_batch = min(batch_size, remaining)
-            if current_batch <= 0:
+        for worker_id in range(num_workers):
+            if remaining <= 0:
                 break
                 
+            # Calculate batch size for this worker
+            current_batch = min(batch_size, remaining)
+            if worker_id == num_workers - 1:  # Last worker gets any remainder
+                current_batch = remaining
+            
             # Cycle through degree combinations
-            deg1, deg2 = combinations_cycle[i // batch_size % len(degree_combinations)]
-            worker_tasks.append((deg1, deg2, current_batch, inner_only, i // batch_size))
+            deg1, deg2 = degree_combinations[worker_id % len(degree_combinations)]
+            worker_tasks.append((deg1, deg2, current_batch, inner_only, worker_id, True))  # True for show_progress
             remaining -= current_batch
         
-        print(f"  Distributing work across {len(worker_tasks)} parallel batches...")
+        print(f"  Distributing {additional_needed:,} samples across {len(worker_tasks)} workers...")
+        print(f"  Average batch size: {additional_needed // len(worker_tasks):,} samples per worker")
         
         # Run parallel generation for training data
         with mp.Pool(num_workers) as pool:
             training_results = pool.map(generate_batch_worker, worker_tasks)
         
-        # Combine training results
-        for worker_expressions, worker_seen in training_results:
+        # Combine training results with progress tracking
+        print(f"  Combining results from {len(training_results)} workers...")
+        total_added = 0
+        
+        for worker_expressions, worker_seen, worker_id in training_results:
+            added_count = 0
             for expr_data in worker_expressions:
                 line, expr_id, deg1, deg2 = expr_data
                 if expr_id not in seen_expressions and len(all_expressions) < training_target:
                     seen_expressions.add(expr_id)
                     all_expressions.append(expr_data)
+                    added_count += 1
+                    total_added += 1
+            
+            print(f"    Worker {worker_id}: Added {added_count:,} unique samples")
         
-        print(f"  Final training pool size: {len(all_expressions)}")
+        print(f"  ✅ Added {total_added:,} new training samples")
+        print(f"  📊 Final training pool size: {len(all_expressions):,}")
 
     print(f"\nStep 3: Writing datasets to files...")
 
