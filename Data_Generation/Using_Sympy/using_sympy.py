@@ -267,16 +267,27 @@ def generate_batch_worker(args):
     
     progress_interval = max(100, batch_size // 10)  # Show progress every 10% or 100 samples
     
+    # If degree1 and degree2 are None, generate random degrees for each sample
+    use_random_degrees = (degree1 is None or degree2 is None)
+    
     while len(expressions) < batch_size and attempts < max_attempts:
         try:
-            line, (poly1, poly2, result) = generate_dataset_line(degree1, degree2, inner_only=inner_only)
+            # Generate random degrees for each sample if requested
+            if use_random_degrees:
+                current_degree1 = random.choice([2, 3, 4])
+                current_degree2 = random.choice([2, 3, 4])
+            else:
+                current_degree1 = degree1
+                current_degree2 = degree2
+                
+            line, (poly1, poly2, result) = generate_dataset_line(current_degree1, current_degree2, inner_only=inner_only)
             
             # Create a unique identifier for this expression combination
             expr_id = (str(poly1), str(poly2))
             
             if expr_id not in local_seen:
                 local_seen.add(expr_id)
-                expressions.append((line, expr_id, degree1, degree2))
+                expressions.append((line, expr_id, current_degree1, current_degree2))
                 
                 # Show progress for this worker
                 if show_progress and len(expressions) % progress_interval == 0:
@@ -298,6 +309,12 @@ def generate_batch_worker(args):
 
 def generate_all_datasets_parallel(file_directory="datasets", num_train=100000, num_test=3000, num_valid=128, inner_only=False, num_cpus=None):
     """Generate all training and test datasets using multiprocessing for speed.
+    
+    Simplified approach:
+    1. Generate all data at once with 1% buffer
+    2. Deduplicate globally
+    3. Shuffle everything
+    4. Split into datasets (filter by degree for test sets)
     
     Args:
         num_cpus: Number of CPU cores to use. If None, auto-detects and uses optimal number.
@@ -326,137 +343,159 @@ def generate_all_datasets_parallel(file_directory="datasets", num_train=100000, 
     print(f"💻 System has {os.cpu_count()} total CPU threads, using {num_workers} workers")
     print(f"🔧 Multiprocessing method: {mp.get_start_method()}")
     
-    seen_expressions = set()
-    all_expressions = []
-    test_expressions = {}
-
-    # Define all degree combinations for test sets
+    # Define all degree combinations
     degree_combinations = [
         (2, 2), (2, 3), (2, 4),
         (3, 2), (3, 3), (3, 4),
         (4, 2), (4, 3), (4, 4)
     ]
-
-    print("Step 1: Generating expressions for test datasets in parallel...")
     
-    # Use fewer workers for test datasets (small batches don't need 128 workers)
-    test_workers = min(32, num_workers // 4)  # Use 1/4 of workers, max 32
-    samples_per_degree = 2 * num_test  # 6000 samples per degree combination
+    # Calculate total samples needed with 1% buffer
+    total_needed = num_train + num_valid + (9 * num_test)  # 9 test datasets
+    total_to_generate = int(total_needed * 1.01)  # 1% buffer for duplicates
     
-    print(f"  Using {test_workers} workers for test datasets ({samples_per_degree:,} samples per degree combination)")
+    print(f"\n📊 Dataset requirements:")
+    print(f"  Training: {num_train:,}")
+    print(f"  Validation: {num_valid}")
+    print(f"  Test: 9 × {num_test:,} = {9 * num_test:,}")
+    print(f"  Total needed: {total_needed:,}")
+    print(f"  Generating with 1% buffer: {total_to_generate:,}")
     
-    # Create tasks for all degree combinations to run simultaneously
-    test_tasks = []
-    for i, (deg1, deg2) in enumerate(degree_combinations):
-        # Calculate batch size for this degree combination
-        batch_size = max(100, samples_per_degree // test_workers)
-        
-        # Create worker tasks for this degree combination
-        for worker_id in range(test_workers):
-            current_batch = batch_size
-            if worker_id == test_workers - 1:  # Last worker gets remainder
-                current_batch = samples_per_degree - (batch_size * (test_workers - 1))
+    print(f"\nStep 1: Generating all {total_to_generate:,} samples in parallel...")
+    
+    # Calculate batch size per worker
+    batch_size = max(1000, total_to_generate // num_workers)
+    
+    # Create worker tasks - all generating random degrees
+    worker_tasks = []
+    remaining = total_to_generate
+    
+    for worker_id in range(num_workers):
+        if remaining <= 0:
+            break
             
-            # Unique worker ID across all degree combinations
-            global_worker_id = i * test_workers + worker_id
-            test_tasks.append((deg1, deg2, current_batch, inner_only, global_worker_id, False))
-    
-    print(f"  Generating ALL 9 test datasets simultaneously using {len(test_tasks)} parallel tasks...")
-    
-    # Run all test dataset generation in parallel
-    with mp.Pool(min(num_workers, len(test_tasks))) as pool:
-        all_test_results = pool.map(generate_batch_worker, test_tasks)
-    
-    # Group results by degree combination
-    degree_results = {deg_combo: [] for deg_combo in degree_combinations}
-    
-    for worker_expressions, worker_seen, worker_id in all_test_results:
-        # Determine which degree combination this worker was working on
-        degree_index = worker_id // test_workers
-        if degree_index < len(degree_combinations):
-            deg_combo = degree_combinations[degree_index]
-            degree_results[deg_combo].extend(worker_expressions)
-    
-    # Process results for each degree combination
-    for deg1, deg2 in degree_combinations:
-        expressions = degree_results[(deg1, deg2)]
+        # Calculate batch size for this worker
+        current_batch = min(batch_size, remaining)
+        if worker_id == num_workers - 1:  # Last worker gets remainder
+            current_batch = remaining
         
-        # Add unique expressions to seen_expressions and update global seen set
-        unique_expressions = []
-        for expr_data in expressions:
-            line, expr_id, deg1_check, deg2_check = expr_data
+        # All workers generate random degrees
+        worker_tasks.append((None, None, current_batch, inner_only, worker_id, True))
+        remaining -= current_batch
+    
+    print(f"  Distributing {total_to_generate:,} samples across {len(worker_tasks)} workers")
+    print(f"  Average batch size: {total_to_generate // len(worker_tasks):,} samples per worker")
+    
+    # Run parallel generation
+    with mp.Pool(num_workers) as pool:
+        all_results = pool.map(generate_batch_worker, worker_tasks)
+    
+    print(f"\nStep 2: Deduplicating and organizing results...")
+    
+    # Combine all results and deduplicate
+    seen_expressions = set()
+    all_unique_expressions = []
+    expressions_by_degree = {deg_combo: [] for deg_combo in degree_combinations}
+    
+    total_generated = 0
+    total_duplicates = 0
+    
+    for worker_expressions, _, worker_id in all_results:
+        worker_unique = 0
+        worker_duplicates = 0
+        
+        for expr_data in worker_expressions:
+            line, expr_id, deg1, deg2 = expr_data
+            total_generated += 1
+            
             if expr_id not in seen_expressions:
                 seen_expressions.add(expr_id)
-                unique_expressions.append(expr_data)
-        
-        # Take first num_test for test set, rest goes to training pool
-        test_expressions[(deg1, deg2)] = unique_expressions[:num_test]
-        
-        if len(unique_expressions) > num_test:
-            all_expressions.extend(unique_expressions[num_test:])
-        
-        print(f"  Test set ({deg1}, {deg2}): {len(test_expressions[(deg1, deg2)])} samples")
-        print(f"  Added {max(0, len(unique_expressions) - num_test)} extra samples to training pool")
-
-    print(f"\nStep 2: Generating additional training data in parallel...")
-    print(f"Current training pool size: {len(all_expressions)}")
-
-    # Generate additional random expressions for training until we reach target
-    training_target = num_train + num_valid
-    current_training_size = len(all_expressions)
-    additional_needed = training_target - current_training_size
-
-    if additional_needed > 0:
-        print(f"Generating {additional_needed:,} additional training expressions using {num_workers} parallel workers...")
-        
-        # Calculate optimal batch size per worker
-        batch_size = max(1000, additional_needed // num_workers)
-        
-        # Create exactly num_workers tasks
-        worker_tasks = []
-        remaining = additional_needed
-        
-        for worker_id in range(num_workers):
-            if remaining <= 0:
-                break
+                all_unique_expressions.append(expr_data)
                 
-            # Calculate batch size for this worker
-            current_batch = min(batch_size, remaining)
-            if worker_id == num_workers - 1:  # Last worker gets any remainder
-                current_batch = remaining
-            
-            # Cycle through degree combinations
-            deg1, deg2 = degree_combinations[worker_id % len(degree_combinations)]
-            worker_tasks.append((deg1, deg2, current_batch, inner_only, worker_id, True))  # True for show_progress
-            remaining -= current_batch
+                # Also store by degree for test sets
+                if (deg1, deg2) in expressions_by_degree:
+                    expressions_by_degree[(deg1, deg2)].append(expr_data)
+                
+                worker_unique += 1
+            else:
+                worker_duplicates += 1
+                total_duplicates += 1
         
-        print(f"  Distributing {additional_needed:,} samples across {len(worker_tasks)} workers...")
-        print(f"  Average batch size: {additional_needed // len(worker_tasks):,} samples per worker")
+        if worker_unique > 0 or worker_duplicates > 0:
+            print(f"  Worker {worker_id}: {worker_unique:,} unique, {worker_duplicates:,} duplicates")
+    
+    print(f"\n📊 Deduplication summary:")
+    print(f"  Total generated: {total_generated:,}")
+    print(f"  Duplicates removed: {total_duplicates:,}")
+    print(f"  Unique expressions: {len(all_unique_expressions):,}")
+    print(f"  Duplicate rate: {total_duplicates/total_generated*100:.1f}%")
+    
+    print(f"\nStep 3: Shuffling all {len(all_unique_expressions):,} unique expressions...")
+    random.shuffle(all_unique_expressions)
+    print(f"  ✅ Shuffled for random distribution")
+    
+    print(f"\nStep 4: Extracting test datasets by degree...")
+    
+    # Extract test datasets
+    test_expressions = {}
+    remaining_expressions = []
+    
+    for deg1, deg2 in degree_combinations:
+        # Get all expressions for this degree combination
+        degree_expressions = [expr for expr in all_unique_expressions 
+                            if expr[2] == deg1 and expr[3] == deg2]
         
-        # Run parallel generation for training data
-        with mp.Pool(num_workers) as pool:
-            training_results = pool.map(generate_batch_worker, worker_tasks)
+        # Shuffle to ensure randomness within degree
+        random.shuffle(degree_expressions)
         
-        # Combine training results with progress tracking
-        print(f"  Combining results from {len(training_results)} workers...")
-        total_added = 0
+        # Take first num_test for test set
+        test_expressions[(deg1, deg2)] = degree_expressions[:num_test]
         
-        for worker_expressions, worker_seen, worker_id in training_results:
-            added_count = 0
-            for expr_data in worker_expressions:
-                line, expr_id, deg1, deg2 = expr_data
-                if expr_id not in seen_expressions and len(all_expressions) < training_target:
-                    seen_expressions.add(expr_id)
-                    all_expressions.append(expr_data)
-                    added_count += 1
-                    total_added += 1
-            
-            print(f"    Worker {worker_id}: Added {added_count:,} unique samples")
+        # Keep the rest for potential use in training/validation
+        if len(degree_expressions) > num_test:
+            remaining_expressions.extend(degree_expressions[num_test:])
         
-        print(f"  ✅ Added {total_added:,} new training samples")
-        print(f"  📊 Final training pool size: {len(all_expressions):,}")
-
-    print(f"\nStep 3: Writing datasets to files...")
+        print(f"  Test set ({deg1}, {deg2}): {len(test_expressions[(deg1, deg2)])} samples " +
+              f"(from {len(degree_expressions)} available)")
+    
+    print(f"\nStep 5: Creating training and validation sets...")
+    
+    # Get all non-test expressions
+    test_expr_ids = set()
+    for test_list in test_expressions.values():
+        for expr in test_list:
+            test_expr_ids.add(expr[1])  # expr[1] is expr_id
+    
+    # Filter out test expressions from the shuffled list
+    non_test_expressions = [expr for expr in all_unique_expressions 
+                           if expr[1] not in test_expr_ids]
+    
+    print(f"  Non-test expressions available: {len(non_test_expressions):,}")
+    
+    # Split into training and validation
+    training_expressions = non_test_expressions[:num_train]
+    validation_expressions = non_test_expressions[num_train:num_train+num_valid]
+    
+    # Verify degree distributions
+    train_degree_counts = {}
+    for _, _, deg1, deg2 in training_expressions:
+        key = (deg1, deg2)
+        train_degree_counts[key] = train_degree_counts.get(key, 0) + 1
+    
+    val_degree_counts = {}
+    for _, _, deg1, deg2 in validation_expressions:
+        key = (deg1, deg2)
+        val_degree_counts[key] = val_degree_counts.get(key, 0) + 1
+    
+    print(f"\n📊 Training set degree distribution:")
+    for (deg1, deg2), count in sorted(train_degree_counts.items()):
+        print(f"  ({deg1}, {deg2}): {count:,} samples ({count/len(training_expressions)*100:.1f}%)")
+    
+    print(f"\n📊 Validation set degree distribution:")
+    for (deg1, deg2), count in sorted(val_degree_counts.items()):
+        print(f"  ({deg1}, {deg2}): {count} samples")
+    
+    print(f"\nStep 6: Writing datasets to files...")
 
     # Write test datasets
     for deg1, deg2 in degree_combinations:
@@ -468,9 +507,6 @@ def generate_all_datasets_parallel(file_directory="datasets", num_train=100000, 
                     f.write("\n")
 
         print(f"  Written {output_file} with {len(test_expressions[(deg1, deg2)])} samples")
-
-    training_expressions = all_expressions[:num_train]
-    validation_expressions = all_expressions[num_train:num_train+num_valid]
 
     # Write training dataset
     print(f"  Writing training dataset with {len(training_expressions)} samples...")
@@ -489,20 +525,36 @@ def generate_all_datasets_parallel(file_directory="datasets", num_train=100000, 
                 f.write("\n")
 
     print(f"\n✅ Parallel dataset generation complete!")
-    print(f"📊 Training dataset: {len(training_expressions)} samples")
-    print(f"📊 Validation dataset: {len(validation_expressions)} samples")
-    print(f"📊 Test datasets: 9 datasets with {num_test} samples each")
+    print(f"📊 Training dataset: {len(training_expressions)} samples (target: {num_train})")
+    print(f"📊 Validation dataset: {len(validation_expressions)} samples (target: {num_valid})")
+    
+    # Verify test dataset sizes
+    test_sizes_correct = True
+    test_total = 0
+    for deg1, deg2 in degree_combinations:
+        test_size = len(test_expressions[(deg1, deg2)])
+        test_total += test_size
+        if test_size != num_test:
+            test_sizes_correct = False
+    
+    print(f"📊 Test datasets: 9 datasets, total {test_total} samples (target: {9 * num_test})")
     print(f"📊 Total unique expressions: {len(seen_expressions)}")
-
-    # Print degree distribution in training data
-    degree_counts = {}
-    for _, _, deg1, deg2 in training_expressions:
-        key = (deg1, deg2)
-        degree_counts[key] = degree_counts.get(key, 0) + 1
-
-    print(f"\n📈 Training data degree distribution:")
-    for (deg1, deg2), count in sorted(degree_counts.items()):
-        print(f"  ({deg1}, {deg2}): {count} samples")
+    
+    # Verify we hit our targets
+    all_targets_met = (len(training_expressions) == num_train and 
+                       len(validation_expressions) == num_valid and 
+                       test_sizes_correct)
+    
+    if all_targets_met:
+        print(f"\n✅ All datasets have exactly the requested number of samples!")
+    else:
+        print(f"\n⚠️  Warning: Some dataset sizes don't match targets:")
+        if len(training_expressions) != num_train:
+            print(f"   Training: {len(training_expressions)} vs target {num_train}")
+        if len(validation_expressions) != num_valid:
+            print(f"   Validation: {len(validation_expressions)} vs target {num_valid}")
+        if not test_sizes_correct:
+            print(f"   Test datasets: Check individual test set sizes above")
 
 
 def generate_all_datasets(file_directory="datasets", num_train=100000, num_test=3000, num_valid=128, inner_only=False):
