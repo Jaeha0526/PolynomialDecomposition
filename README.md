@@ -1,6 +1,6 @@
-# Recognizing Polynomial Substructure
+# Discovering Hidden Algebraic Structures via Transformers
 
-This repository contains code and resources for the paper "RECOGNIZING SUBSTRUCTURES IN MULTIVARIABLE POLYNOMIALS VIA TRANSFORMERS". Our research explores the potential of transformer models to recognize substructures within polynomials.
+This repository contains code and resources for the paper ["Discovering Hidden Algebraic Structures via Transformers with Rank-Aware Beam GRPO"](https://openreview.net/forum?id=lO9q5itiqK&invitationId=ICML.cc/2025/Workshop/MOSS/Submission72/-/Revision&referrer=%5BTasks%5D(%2Ftasks)). Our research explores the potential of transformer models to recognize and decompose hidden algebraic substructures within polynomials.
 
 ## Contents
 
@@ -8,9 +8,9 @@ This repository contains code and resources for the paper "RECOGNIZING SUBSTRUCT
 We provide two methods for generating polynomial datasets:
 
 #### Mathematica Package
-- `MMA_package/usage_and_demos.m` provides tools for generating polynomial data with prefix notation tokenization
-- Example notebooks demonstrate various data generation approaches
-- Supports direct integration with beam search evaluation
+- `MMA_package/usage_and_demos.m` provides the complete data generation pipeline used for experiments in the paper
+- Implements polynomial data generation with prefix notation tokenization
+- Used for performance comparison with Mathematica's symbolic computation capabilities
 
 #### Python/SymPy Implementation
 - `Data_Generation/Using_Sympy/using_sympy.py` offers a fast, parallelized alternative for dataset generation
@@ -19,7 +19,7 @@ We provide two methods for generating polynomial datasets:
 - No Mathematica dependency required for data generation
 
 ### 2. Training Code
-Our implementation is based on Andrej Karpathy's minGPT with the following enhancements:
+Our implementation is based on [Andrej Karpathy's minGPT](https://github.com/karpathy/minGPT) with the following enhancements:
 - Polynomial-specific tokenization
 - Parallelized evaluation
 - Integrated beam search with direct Mathematica evaluation
@@ -58,7 +58,9 @@ This generates training, validation, and 9 test datasets (for all degree combina
 
 ### 3. Training
 
-#### Single Variable Polynomial Decomposition
+#### Single Variable Polynomial Decomposition (Paper: $\mathcal{D}_1$ - First Part)
+This experiment corresponds to the first evaluation axis in our paper ($\mathcal{D}_1$), specifically the first part examining the effect of polynomial degrees.
+
 For polynomial-in-polynomial substitution problems (finding inner and outer polynomials):
 ```bash
 # Generate dataset
@@ -85,12 +87,23 @@ python Training/mingpt/main.py \
     --batch_size 512
 ```
 
-#### O(N) Singlet Substitution
-An example experiment is provided in `Training/example/example_with_ON_data.sh`, which includes:
+#### O(N) Singlet Substitution (Toy Example - Not in Paper)
+This is a toy example not included in our paper. An example experiment is provided in `Training/example/example_with_ON_data.sh`, which includes:
 - Training a model with example O(N) data
 - Fine-tuning capabilities on pre-trained models
 - Testing with greedy search inference
 - Testing with beam search (To use beam search, mathematica should be setup before.)
+
+#### Paper Experiments
+The complete experiment code for all results in our paper can be found in `Training/things_on_paper/`:
+- **exp0**: O(N) experiments
+- **exp1_2**: $\mathcal{D}_1$ first part - varying degrees of inner and outer polynomials
+- **exp1, exp2**: $\mathcal{D}_3$ - multi-variable polynomial experiments
+- **exp3-8**: $\mathcal{D}_2$ first part - varying embedding dimension and layer number
+- **exp10-11**: $\mathcal{D}_2$ second part - varying number of attention heads
+- **exp12-16**: $\mathcal{D}_1$ second part - varying number of variables in inner and outer polynomials
+
+**Important**: To run these paper experiments (other than the example cases above), you need to first generate the training, test, and validation datasets using the Mathematica package. The datasets should be generated and placed in `data_storage/things_on_paper/dataset/` before running the experiment scripts.
 
 The training code supports various hyperparameters including:
 - Block size
@@ -131,8 +144,6 @@ python Training/mingpt/run.py debug_beam \
 #### General Evaluation Notes
 Beam search results can be read directly from the output text files. For greedy search inference, the evaluation code only checks for exact matches with the test dataset. Since problems may have multiple valid answers, you can use Mathematica to verify the correctness of model-generated answers as demonstrated in `MMA_package/example.nb`.
 
-## Paper Experiments
-The implementation details for experiments mentioned in the paper can be found in `Training/things_on_paper`.
 
 ## Interactive Workflow
 The `Polynomial_decomposition.ipynb` Jupyter notebook provides a comprehensive workflow demonstrating:
