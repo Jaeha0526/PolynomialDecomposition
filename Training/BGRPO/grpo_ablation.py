@@ -30,7 +30,7 @@ try:
     from mingpt.model import GPT
     from mingpt.model_loader import load_model_and_tokenizer, load_model_and_tokenizer_from_checkpoint
     # from nanogpt_from_CS148.nanogpt.utils import call_mathematica, LLM_BeamSearch_check # Commented out call_mathematica
-    from mingpt.utils import LLM_BeamSearch_check # Keep LLM_BeamSearch_check if needed
+    from mingpt.utils import LLM_BeamSearch_check, is_valid_expression_sympy_single # Import single variable validator
     print("Successfully imported custom nanogpt model, loader, and utils.")
 except ImportError as e:
     print(f"Error importing nanogpt components: {e}")
@@ -415,7 +415,24 @@ def is_valid_expression(prompt: str, response: str) -> bool:
 
         # --- Use SymPy Validation ---
         print(f"[is_valid] Calling SymPy checker: Input='{input_str}', Pred='{pred_str}'")
-        is_correct_sympy, length = is_valid_expression_sympy(input_str, pred_str, retrieve_length=True)
+        # Check if this is single variable (no '&' in prediction) or multi-variable
+        if ' & ' in pred_str:
+            # Multi-variable polynomial - use the local function
+            is_correct_sympy, length = is_valid_expression_sympy(input_str, pred_str, retrieve_length=True)
+        else:
+            # Single variable polynomial - use the imported function
+            is_correct_sympy = is_valid_expression_sympy_single(input_str, pred_str)
+            # Calculate length manually for single variable case
+            if is_correct_sympy:
+                # Parse to get the polynomials for length calculation
+                tokens = [t for t in pred_str.split(' ') if t]
+                try:
+                    poly = parse_prefix_to_sympy(tokens)
+                    length = count_expression_leaves(poly)
+                except:
+                    length = -1
+            else:
+                length = -1
         print(f"[is_valid] SymPy result: {is_correct_sympy}")
         return is_correct_sympy, length
 
@@ -450,7 +467,7 @@ def check_beam_search(dataset, model, tokentype, beam_width, max_output_length, 
     beam_widths = list(range(1, beam_width + 1))
     correct_counts = {width: 0 for width in beam_widths}
     correct_idx = {width: [] for width in beam_widths}
-    outputs_path = project_root / "GRPO" / "beam_search_outputs.txt"
+    outputs_path = project_root / "BGRPO" / "beam_search_outputs.txt"
 
     args = SimpleNamespace(beam_width=beam_width,
                            max_output_length=max_output_length,

@@ -105,16 +105,6 @@ The complete experiment code for all results in our paper can be found in `Train
 
 **Important**: To run these paper experiments (other than the example cases above), you need to first generate the training, test, and validation datasets using the Mathematica package. The datasets should be generated and placed in `data_storage/things_on_paper/dataset/` before running the experiment scripts.
 
-The training code supports various hyperparameters including:
-- Block size
-- Embedding dimension
-- Number of attention heads
-- Number of layers
-- Learning rate scheduler configuration
-- Batch size
-- Token number specification
-- Cosine learning rate scheduler period
-
 ### 4. Evaluation
 
 #### Single Variable Polynomial Decomposition

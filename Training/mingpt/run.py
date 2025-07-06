@@ -15,7 +15,7 @@ import dataset
 import model
 import trainer
 import utils
-import wandb
+# import wandb
 from itertools import groupby
 
 utils.set_seed(148)
@@ -397,16 +397,37 @@ elif args.mode == "inequality_evaluate3" :
 
 elif args.mode == "inequality_evaluate4":
 
+    def get_actual_tensor_length(line, test_dataset):
+        """
+        Calculate the actual tensor length after processing
+        """
+        line_here = line.replace("?", "⁇")
+        x = line_here.split("⁇")[0]
+        x = x.split(" ")
+        x.append("⁇")
+        x = [item for item in x if item != ""]  # This filtering affects length!
+        return len(x)
+
     def group_lines_by_length_with_index(lines):
         """
-        Group lines by their lengths along with their original index to preserve order.
+        Group lines by their actual tensor lengths after processing
         """
-        # Convert lines to tensor lengths and keep track of the original index
-        lines_with_lengths = [(i, line, len(line.replace("?", "⁇").split("⁇")[0].split(" "))) for i, line in enumerate(lines)]
-        # Sort by length of the input
+        # This function is kept for compatibility but should not be used
+        # Use group_lines_by_exact_length_with_index instead
+        raise NotImplementedError("Use group_lines_by_exact_length_with_index instead")
+
+    def group_lines_by_exact_length_with_index(lines, test_dataset):
+        """
+        Group lines by their actual tensor lengths after processing
+        """
+        # Calculate actual tensor lengths for each line
+        lines_with_lengths = [(i, line, get_actual_tensor_length(line, test_dataset)) 
+                             for i, line in enumerate(lines)]
+        
+        # Sort by actual tensor length
         lines_with_lengths.sort(key=lambda x: x[2])
 
-        # Group by similar lengths
+        # Group by exact tensor length
         grouped_lines = []
         for length, group in groupby(lines_with_lengths, key=lambda x: x[2]):
             grouped_lines.append([(i, line) for i, line, _ in group])
@@ -441,8 +462,8 @@ elif args.mode == "inequality_evaluate4":
     lines = open(args.evaluate_corpus_path, encoding="utf-8").readlines()
     lines = lines[:args.max_test]
 
-    # Group lines by length to avoid padding
-    grouped_lines = group_lines_by_length_with_index(lines)
+    # Group lines by exact tensor length to avoid padding issues
+    grouped_lines = group_lines_by_exact_length_with_index(lines, test_dataset)
     predictions_dict = {}
     true_output_dict = {}
 
@@ -472,11 +493,26 @@ elif args.mode == "inequality_evaluate4":
 
             for j, pred in enumerate(batch_preds):
                 completion = "".join([test_dataset.itos[int(k)] + " " for k in pred])
-                pred_str = completion.replace(" ", "").split("⁇")[1]
-                pred2 = completion.split("⁇")[1]
+                
+                # Extract prediction after ⁇ and clean it up
+                if "⁇" in completion:
+                    pred2 = completion.split("⁇")[1].strip()
+                    
+                    # Remove any trailing special tokens or garbage
+                    # Stop at the next ⁇ or □ (padding) token
+                    if "⁇" in pred2:
+                        pred2 = pred2.split("⁇")[0].strip()
+                    if "□" in pred2:
+                        pred2 = pred2.split("□")[0].strip()
+                    
+                    # Also clean up the version without spaces for evaluation
+                    pred_str = pred2.replace(" ", "")
+                else:
+                    # If no ⁇ found, something went wrong
+                    pred2 = ""
+                    pred_str = ""
+                
                 predictions.append(pred_str)
-
-                # predictions_dict[original_indices[j]] = pred_str
                 predictions_dict[original_indices[j]] = pred2
 
                 line_here = batch_lines[j][1].replace("?", "⁇")

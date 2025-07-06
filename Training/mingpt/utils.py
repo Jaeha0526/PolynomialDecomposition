@@ -14,7 +14,6 @@ import re
 import hashlib
 from typing import List, Tuple, Dict, Optional
 from torch.nn.utils.rnn import pad_sequence
-from datasets import Dataset  # Import Dataset for proper dataset handling
 import random
 import sympy
 import math
@@ -233,8 +232,13 @@ def LLM_BeamSearch_check(gpt, input_str, tokentype, device, args):
         
         if args.sympy :
             print(f"[DEBUG] input_str: {input_str}")
-            print(f"[DEBUS] pred: {pred}")
-            result = is_valid_expression_sympy(input_str, pred)
+            print(f"[DEBUG] pred: {pred}")
+            # Check if this is single variable (no '&' in prediction) or multi-variable
+            if ' & ' in pred:
+                result = is_valid_expression_sympy(input_str, pred)
+            else:
+                # Single variable polynomial - use the appropriate validator
+                result = is_valid_expression_sympy_single(input_str, pred)
         else:
             result = call_mathematica(input_str, pred, args)
 
@@ -717,7 +721,12 @@ def LLM_MultiSampling_check(model, input_str, tokentype, device, args):
             # Verify with call_mathematica if check_path is provided
             if hasattr(args, 'check_path') and args.check_path:
                 if args.sympy :
-                    correct = is_valid_expression_sympy(input_str, pred)
+                    # Check if this is single variable (no '&' in prediction) or multi-variable
+                    if ' & ' in pred:
+                        correct = is_valid_expression_sympy(input_str, pred)
+                    else:
+                        # Single variable polynomial - use the appropriate validator
+                        correct = is_valid_expression_sympy_single(input_str, pred)
                 else:
                     correct = call_mathematica(input_str, pred, args)
                 if correct:
