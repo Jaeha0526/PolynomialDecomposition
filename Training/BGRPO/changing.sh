@@ -1,4 +1,4 @@
-EXP_DIR=../../outputs
+EXP_DIR=../../data_storage/outputs
 OUTPUT_DIR=../../data_storage/model/BGRPO
 CHECKPOINTS=(
     20

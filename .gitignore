@@ -40,6 +40,7 @@ ipython_config.py
 # Data storage directories
 data_storage/outputs/
 data_storage/dataset/predictions/
+data_storage/model/BGRPO
 
 # Large files
 data_storage/dataset/single_variable/training_dataset.txt
