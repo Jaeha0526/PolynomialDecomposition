@@ -43,8 +43,9 @@ data_storage/dataset/predictions/
 
 # Large files
 data_storage/dataset/single_variable/training_dataset.txt
-data_storage/model/*.pt
-*.pt
+# Only ignore the large single_variable models that exceed GitHub's limits
+data_storage/model/single_variable_model.pt
+data_storage/model/single_variable_model_best*.pt
 
 # IDE files
 .vscode/
