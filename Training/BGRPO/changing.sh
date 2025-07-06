@@ -1,12 +1,16 @@
 EXP_DIR=../../data_storage/outputs
 OUTPUT_DIR=../../data_storage/model/BGRPO
 CHECKPOINTS=(
+    10
     20
+    30
     40
+    50
     60
+    70
     80
+    90
     100
-    120
 )
 
 EXP_NAME=_BGRPO

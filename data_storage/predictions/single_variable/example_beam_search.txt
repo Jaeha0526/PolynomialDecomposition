@@ -1,224 +1,224 @@
-+P9+*P3a+*N9^aP2+*N12^aP3*N19^aP4
-⁇ + P 9 + * P 3 a + * N 9 ^ a P 2 + * N 1 2 ^ a P 3 * N 1 9 ^ a P 4   RANK[2]
-+P5+*N17a+*P9^aP2+*P5^aP3*N13^aP4
-⁇ + N 5 + * N 1 7 a + * P 9 ^ a P 2 + * P 5 ^ a P 3 * N 1 3 ^ a P 4   RANK[6]
-+P15+*P7a+*N13^aP2+*P5^aP3*N7^aP4
-⁇ + P 1 5 + * N 7 a + * P 1 3 ^ a P 2 + * N 5 ^ a P 3 * P 7 ^ a P 4   RANK[3]
-+N1+*N20a+*P11^aP2*P12^aP4
-⁇ + P 1 + * N 2 0 a + * P 1 1 ^ a P 2 * P 1 2 ^ a P 4   RANK[0]
-+N14+*N13a+*P15^aP2+*P16^aP3*N8^aP4
++N10+*P9a+*P10^aP2+*N2^aP3*P17^aP4
 ⁇False
-+P2+*N20a+*P4^aP2+*N15^aP3*P17^aP4
-⁇ + N 4 + * N 2 0 a + * P 4 ^ a P 2 + * N 1 5 ^ a P 3 * P 1 7 ^ a P 4   RANK[4]
-+N12+*P6a+*P6^aP2+*P1^aP3*P11^aP4
-⁇ + P 1 1 + * N 6 a + * N 6 ^ a P 2 + * N 1 ^ a P 3 * N 1 1 ^ a P 4   RANK[0]
-+P5+*P4a+*N11^aP2+*N19^aP3*P20^aP4
-⁇ + P 5 + * P 4 a + * N 1 1 ^ a P 2 + * N 1 9 ^ a P 3 * P 2 0 ^ a P 4   RANK[1]
-+P17+*N18a+*N1^aP2+*P18^aP3*N14^aP4
++N17+*N8a+*N11^aP3*N11^aP4
 ⁇False
-+N5+*N19a+*N17^aP2+*P13^aP3*N18^aP4
++P8+*P4a+*P16^aP3*P20^aP4
 ⁇False
-+N17+*N14a+*P8^aP2+*N19^aP3*P5^aP4
-⁇ + P 1 7 + * N 1 4 a + * P 8 ^ a P 2 + * N 1 9 ^ a P 3 * P 5 ^ a P 4   RANK[1]
-+N1+*P19a+*N7^aP2+*N15^aP3*N18^aP4
-⁇ + P 1 + * P 1 9 a + * N 7 ^ a P 2 + * N 1 5 ^ a P 3 * N 1 8 ^ a P 4   RANK[0]
-+N4+*P7a+*N15^aP2+*N15^aP3*P2^aP4
-⁇ + N 5 + * P 7 a + * N 1 5 ^ a P 2 + * N 1 5 ^ a P 3 * P 2 ^ a P 4   RANK[5]
-+P9+*N1a+*P9^aP2+*N20^aP3*N14^aP4
++N17+*N16a+*P15^aP2+*N10^aP3*N11^aP4
+⁇ + N 1 7 + * N 1 6 a + * P 1 5 ^ a P 2 + * N 1 0 ^ a P 3 * N 1 1 ^ a P 4   RANK[1]
++N5+*P13a+*N9^aP2+*N20^aP3*P6^aP4
 ⁇False
-+P2+*P9a+*N15^aP2+*P12^aP3*P15^aP4
-⁇ + P 2 + * N 9 a + * P 1 5 ^ a P 2 + * N 1 2 ^ a P 3 * N 1 5 ^ a P 4   RANK[2]
-+N1+*N3a+*P18^aP2+*N6^aP3*P4^aP4
++N17+*N12a+*P14^aP2+*N1^aP3*P20^aP4
+⁇ + P 1 8 + * N 1 2 a + * P 1 4 ^ a P 2 + * N 1 ^ a P 3 * P 2 0 ^ a P 4   RANK[0]
++*P17a+*N4^aP2+*N13^aP3*N19^aP4
 ⁇False
-+N19+*N10a+*P5^aP2+*P9^aP3*P11^aP4
-⁇ + P 1 9 + * N 1 0 a + * P 5 ^ a P 2 + * P 9 ^ a P 3 * P 1 1 ^ a P 4   RANK[5]
-+P1+*P13a+*P13^aP2+*N5^aP3*P11^aP4
-⁇ + * N 1 3 a + * N 1 3 ^ a P 2 + * P 5 ^ a P 3 * N 1 1 ^ a P 4   RANK[3]
-+P3+*P16a+*N8^aP2+*N12^aP3*N18^aP4
++N11+*N18a+*P18^aP2+*N2^aP3*P8^aP4
+⁇ + N 1 0 + * P 1 8 a + * N 1 8 ^ a P 2 + * P 2 ^ a P 3 * N 8 ^ a P 4   RANK[0]
++N8+*N14a+*N2^aP2+*P11^aP3*N13^aP4
 ⁇False
-+*N17a+*N1^aP2+*P20^aP3*N20^aP4
++N3+*P2a+*N5^aP2+*P4^aP3*P4^aP4
 ⁇False
-+N8+*N2a+*P20^aP2+*P17^aP3*P2^aP4
-⁇ + N 8 + * P 2 a + * N 2 0 ^ a P 2 + * N 1 7 ^ a P 3 * N 2 ^ a P 4   RANK[4]
-+P8+*N4a+*P13^aP2+*P17^aP3*N18^aP4
++P11+*N7a+*P3^aP2+*N16^aP3*N14^aP4
 ⁇False
-+N6+*N4a+*N19^aP2+*N3^aP3*P17^aP4
-⁇ + N 7 + * N 4 a + * N 1 9 ^ a P 2 + * N 3 ^ a P 3 * P 1 7 ^ a P 4   RANK[2]
-+P6+*P3a+*P16^aP2+*P6^aP3*P5^aP4
-⁇ + N 6 + * N 3 a + * N 1 6 ^ a P 2 + * N 6 ^ a P 3 * N 5 ^ a P 4   RANK[0]
-+P17+*P4a+*N5^aP2+*P4^aP3*P8^aP4
-⁇ + P 1 7 + * N 4 a + * P 5 ^ a P 2 + * N 4 ^ a P 3 * N 8 ^ a P 4   RANK[4]
-+P4+*N16a+*N14^aP2+*P1^aP3*N5^aP4
-⁇ + N 6 + * N 1 6 a + * N 1 4 ^ a P 2 + * P 1 ^ a P 3 * N 5 ^ a P 4   RANK[7]
-+P14+*N2a+*P9^aP2+*P2^aP3*N4^aP4
-⁇ + P 1 4 + * P 2 a + * N 9 ^ a P 2 + * N 2 ^ a P 3 * P 4 ^ a P 4   RANK[2]
-+P4+*N17a+*N11^aP2+*P2^aP3*N3^aP4
++N15+*N13a+*N2^aP2+*P12^aP3*N11^aP4
 ⁇False
-+N10+*N18a+*N14^aP2+*N11^aP3*P12^aP4
++N5+*N12a+*N7^aP2+*N18^aP3*P10^aP4
 ⁇False
-+P9+*P20a+*N8^aP2+*P9^aP3*P12^aP4
++P3+*P2a+*N20^aP2+*N6^aP3*N19^aP4
+⁇ + P 3 + * N 2 a + * P 2 0 ^ a P 2 + * P 6 ^ a P 3 * P 1 9 ^ a P 4   RANK[5]
++P5+*P14a+*N14^aP2+*N20^aP3*P2^aP4
 ⁇False
-+P3+*P10a+*P14^aP2+*P15^aP3*P6^aP4
-⁇ + N 1 + * N 1 0 a + * N 1 4 ^ a P 2 + * N 1 5 ^ a P 3 * N 6 ^ a P 4   RANK[7]
-+P6+*P6a+*N20^aP2+*N19^aP3*N11^aP4
++P11+*P12a+*P10^aP2+*P17^aP3*N18^aP4
 ⁇False
-+P8+*N17a+*P11^aP2+*P5^aP3*N4^aP4
-⁇ + P 7 + * N 1 7 a + * P 1 1 ^ a P 2 + * P 5 ^ a P 3 * N 4 ^ a P 4   RANK[5]
-+P15+*P3a+*P17^aP2+*P12^aP3*P14^aP4
-⁇ + P 1 5 + * N 3 a + * N 1 7 ^ a P 2 + * N 1 2 ^ a P 3 * N 1 4 ^ a P 4   RANK[3]
-+N3+*N8a+*N2^aP3*P7^aP4
-⁇ + P 4 + * N 8 a + * N 2 ^ a P 3 * P 7 ^ a P 4   RANK[4]
-+N15+*N10a+*P12^aP3*N13^aP4
++P20+*P15a+*P5^aP2+*N3^aP3*N7^aP4
+⁇ + P 2 0 + * N 1 5 a + * N 5 ^ a P 2 + * P 3 ^ a P 3 * P 7 ^ a P 4   RANK[6]
++N19+*P17a+*N12^aP2+*N8^aP3*P14^aP4
 ⁇False
-+P10+*N15a+*N10^aP2+*P6^aP3*P1^aP4
-⁇ + P 1 1 + * P 1 5 a + * P 1 0 ^ a P 2 + * N 6 ^ a P 3 * N 1 ^ a P 4   RANK[1]
-+P17+*P16a+*N11^aP2+*N6^aP3*N14^aP4
++N19+*N20a+*N13^aP2+*N19^aP3*P10^aP4
+⁇ + P 1 9 + * N 2 0 a + * N 1 3 ^ a P 2 + * N 1 9 ^ a P 3 * P 1 0 ^ a P 4   RANK[0]
++P6+*P13a+*N1^aP2+*P19^aP3*N15^aP4
 ⁇False
-+*N10a+*P20^aP2+*N17^aP3*P15^aP4
-⁇ + * N 1 0 a + * P 2 0 ^ a P 2 + * N 1 7 ^ a P 3 * P 1 5 ^ a P 4   RANK[2]
-+P15+*N4a+*N12^aP2+*N1^aP3*P16^aP4
-⁇ + P 1 3 + * N 4 a + * N 1 2 ^ a P 2 + * N 1 ^ a P 3 * P 1 6 ^ a P 4   RANK[1]
-+N13+*N9a+*N20^aP2+*N3^aP3*P6^aP4
-⁇ + N 1 3 + * N 9 a + * N 2 0 ^ a P 2 + * N 3 ^ a P 3 * P 6 ^ a P 4   RANK[1]
-+P15+*P16a+*N15^aP2+*N17^aP3*N1^aP4
++N17+*N14a+*N1^aP2+*P15^aP3*N14^aP4
 ⁇False
-+N18+*P15a+*N11^aP2+*N1^aP3*N6^aP4
++N16+*N13a+*N3^aP2+*P20^aP3*P19^aP4
 ⁇False
-+P15+*P17a+*P5^aP2+*N9^aP3*N1^aP4
++P13+*N16a+*N20^aP2+*N8^aP3*P18^aP4
 ⁇False
-+N14+*P18a+*P3^aP2+*N12^aP3*N1^aP4
++P6+*P12a+*P10^aP2+*P2^aP3*P4^aP4
 ⁇False
-+P5+*P17a+*N11^aP2+*P2^aP3*N8^aP4
++N2+*N15a+*P5^aP2+*P17^aP3*N1^aP4
+⁇ + P 2 + * N 1 5 a + * P 5 ^ a P 2 + * P 1 7 ^ a P 3 * N 1 ^ a P 4   RANK[2]
++P8+*N14a+*N11^aP2+*P6^aP3*N1^aP4
+⁇ + N 8 + * P 1 4 a + * P 1 1 ^ a P 2 + * N 6 ^ a P 3 * P 1 ^ a P 4   RANK[2]
++N20+*N11a+*P12^aP2+*P13^aP3*P2^aP4
+⁇ + P 2 0 + * N 1 1 a + * P 1 2 ^ a P 2 + * P 1 3 ^ a P 3 * P 2 ^ a P 4   RANK[1]
++N17+*N5a+*P13^aP2+*P16^aP3*P4^aP4
+⁇ + P 1 7 + * N 5 a + * P 1 3 ^ a P 2 + * P 1 6 ^ a P 3 * P 4 ^ a P 4   RANK[6]
++N12+*N16a+*N5^aP2+*N12^aP3*P2^aP4
 ⁇False
-+P9+*P19a+*N5^aP2+*P17^aP3*P17^aP4
-⁇ + N 8 + * N 1 9 a + * P 5 ^ a P 2 + * N 1 7 ^ a P 3 * N 1 7 ^ a P 4   RANK[4]
-+P16+*P1a+*N20^aP2+*N8^aP3*N5^aP4
-⁇ + P 1 6 + * P 1 a + * N 2 0 ^ a P 2 + * N 8 ^ a P 3 * N 5 ^ a P 4   RANK[3]
-+N20+*P14a+*N19^aP2+*N14^aP3*N3^aP4
-⁇ + P 2 0 + * N 1 4 a + * P 1 9 ^ a P 2 + * P 1 4 ^ a P 3 * P 3 ^ a P 4   RANK[5]
-+*N18a+*N9^aP2*N10^aP4
-⁇ + * N 1 8 a + * N 9 ^ a P 2 * N 1 0 ^ a P 4   RANK[1]
++N9+*N15a+*N5^aP2+*P2^aP3*P16^aP4
+⁇ + N 9 + * N 1 5 a + * N 5 ^ a P 2 + * P 2 ^ a P 3 * P 1 6 ^ a P 4   RANK[6]
++N8+*P11a+*N2^aP2+*N3^aP3*P4^aP4
+⁇False
++N12+*P14a+*N6^aP2+*P8^aP3*N1^aP4
+⁇False
++P11+*P5a+*N1^aP2+*N3^aP3*N13^aP4
+⁇ + N 1 1 + * N 5 a + * P 1 ^ a P 2 + * P 3 ^ a P 3 * P 1 3 ^ a P 4   RANK[5]
++P1+*N15a+*N18^aP2+*N9^aP3*N19^aP4
+⁇ + N 1 + * N 1 5 a + * N 1 8 ^ a P 2 + * N 9 ^ a P 3 * N 1 9 ^ a P 4   RANK[0]
++N5+*N6a+*P8^aP2+*N18^aP3*P20^aP4
+⁇False
++P10+*P16a+*N15^aP2+*N15^aP3*N10^aP4
+⁇ + N 1 0 + * N 1 6 a + * P 1 5 ^ a P 2 + * P 1 5 ^ a P 3 * P 1 0 ^ a P 4   RANK[6]
++N15+*N2^aP2+*N18^aP3*P14^aP4
+⁇ + P 1 5 + * N 2 ^ a P 2 + * N 1 8 ^ a P 3 * P 1 4 ^ a P 4   RANK[4]
++N1+*N14a+*N17^aP2+*P6^aP3*P16^aP4
+⁇False
++P14+*P20a+*N9^aP2+*N15^aP3*P9^aP4
+⁇ + P 1 4 + * N 2 0 a + * P 9 ^ a P 2 + * P 1 5 ^ a P 3 * N 9 ^ a P 4   RANK[9]
++P16+*N20a+*N12^aP2+*P3^aP3*N10^aP4
+⁇ + N 1 6 + * N 2 0 a + * N 1 2 ^ a P 2 + * P 3 ^ a P 3 * N 1 0 ^ a P 4   RANK[7]
++N20+*P6a+*P5^aP2+*N15^aP3*N17^aP4
+⁇ + P 2 0 + * N 6 a + * N 5 ^ a P 2 + * P 1 5 ^ a P 3 * P 1 7 ^ a P 4   RANK[2]
++P3+*N2a+*P13^aP2+*N13^aP3*N16^aP4
+⁇False
++N1+*N7a+*N13^aP2+*N17^aP3*N14^aP4
+⁇False
++P1+*P15a+*P14^aP2+*N15^aP3*P7^aP4
+⁇False
++N11+*P14a+*N19^aP2+*P9^aP3*P14^aP4
+⁇False
++N18+*P15a+*P9^aP2+*P7^aP3*P7^aP4
+⁇False
++P17+*N19a+*N3^aP2+*P1^aP3*N18^aP4
+⁇ + N 1 7 + * N 1 9 a + * N 3 ^ a P 2 + * P 1 ^ a P 3 * N 1 8 ^ a P 4   RANK[6]
++P5+*N1a+*P11^aP2+*N6^aP3*P4^aP4
+⁇ + N 5 + * P 1 a + * N 1 1 ^ a P 2 + * P 6 ^ a P 3 * N 4 ^ a P 4   RANK[2]
++P13+*N6a+*N7^aP2+*N7^aP3*P5^aP4
+⁇False
++*P17a+*N5^aP2+*N12^aP3*P8^aP4
+⁇False
 Statistics at line 49 :
-Beam width 1: 10 out of 50: 20.00%
-Beam width 2: 15 out of 50: 30.00%
-Beam width 3: 19 out of 50: 38.00%
-Beam width 4: 24 out of 50: 48.00%
-Beam width 5: 28 out of 50: 56.00%
-Beam width 6: 29 out of 50: 58.00%
-Beam width 7: 31 out of 50: 62.00%
-Beam width 8: 31 out of 50: 62.00%
-Beam width 9: 31 out of 50: 62.00%
-Beam width 10: 31 out of 50: 62.00%
+Beam width 1: 6 out of 50: 12.00%
+Beam width 2: 10 out of 50: 20.00%
+Beam width 3: 10 out of 50: 20.00%
+Beam width 4: 11 out of 50: 22.00%
+Beam width 5: 13 out of 50: 26.00%
+Beam width 6: 18 out of 50: 36.00%
+Beam width 7: 19 out of 50: 38.00%
+Beam width 8: 19 out of 50: 38.00%
+Beam width 9: 20 out of 50: 40.00%
+Beam width 10: 20 out of 50: 40.00%
 
-+P2+*P11a+*P6^aP3*P3^aP4
++N15+*N5a+*P3^aP2+*N14^aP3*N8^aP4
+⁇ + P 1 5 + * N 5 a + * P 3 ^ a P 2 + * N 1 4 ^ a P 3 * N 8 ^ a P 4   RANK[6]
++P7+*N16a+*P1^aP2+*P14^aP3*N9^aP4
 ⁇False
-+P6+*N11a+*N2^aP2+*N5^aP3*P20^aP4
-⁇ + P 6 + * N 1 1 a + * N 2 ^ a P 2 + * N 5 ^ a P 3 * P 2 0 ^ a P 4   RANK[1]
-+P12+*P10^aP2+*P11^aP3*P7^aP4
-⁇ + N 1 2 + * N 1 0 ^ a P 2 + * N 1 1 ^ a P 3 * N 7 ^ a P 4   RANK[1]
-+N7+*N4a+*P12^aP2+*P16^aP3*P11^aP4
-⁇ + P 6 + * P 4 a + * N 1 2 ^ a P 2 + * N 1 6 ^ a P 3 * N 1 1 ^ a P 4   RANK[1]
-+P9+*N9a+*N8^aP2+*N11^aP3*P13^aP4
-⁇ + P 8 + * N 9 a + * N 8 ^ a P 2 + * N 1 1 ^ a P 3 * P 1 3 ^ a P 4   RANK[1]
-+N8+*P14a+*P4^aP2+*P1^aP3*P7^aP4
-⁇ + P 9 + * N 1 4 a + * N 4 ^ a P 2 + * N 1 ^ a P 3 * N 7 ^ a P 4   RANK[4]
-+P6+*P10^aP2+*P7^aP3*P7^aP4
-⁇ + P 6 + * N 1 0 ^ a P 2 + * N 7 ^ a P 3 * N 7 ^ a P 4   RANK[0]
-+P16+*N16a+*N2^aP2+*P1^aP3*N14^aP4
-⁇ + P 1 5 + * N 1 6 a + * N 2 ^ a P 2 + * P 1 ^ a P 3 * N 1 4 ^ a P 4   RANK[3]
-+P3+*P17a+*P8^aP2+*P6^aP3*N19^aP4
++P4+*P18a+*N16^aP2*P3^aP4
+⁇ + N 4 + * P 1 8 a + * N 1 6 ^ a P 2 * P 3 ^ a P 4   RANK[5]
++N1+*N1a+*P3^aP2*P1^aP4
 ⁇False
-+N17+*N2a+*P12^aP2+*N15^aP3*N12^aP4
-⁇ + P 1 8 + * P 2 a + * N 1 2 ^ a P 2 + * P 1 5 ^ a P 3 * P 1 2 ^ a P 4   RANK[1]
-+P20+*N8a+*N8^aP2+*P9^aP3*N5^aP4
-⁇ + P 2 0 + * N 8 a + * N 8 ^ a P 2 + * P 9 ^ a P 3 * N 5 ^ a P 4   RANK[4]
-+P2+*P6a+*N2^aP2+*N20^aP3*N5^aP4
-⁇ + P 2 + * P 6 a + * N 2 ^ a P 2 + * N 2 0 ^ a P 3 * N 5 ^ a P 4   RANK[8]
-+P10+*P14a+*P5^aP2+*N5^aP3*P16^aP4
-⁇ + P 1 1 + * N 1 4 a + * N 5 ^ a P 2 + * P 5 ^ a P 3 * N 1 6 ^ a P 4   RANK[4]
-+P6+*P3a+*P3^aP2+*N7^aP3*P10^aP4
-⁇ + P 6 + * P 3 a + * P 3 ^ a P 2 + * N 7 ^ a P 3 * P 1 0 ^ a P 4   RANK[5]
-+N2+*P5a+*N11^aP2+*N8^aP3*N10^aP4
++P8+*N15a+*P9^aP2*P8^aP4
+⁇ + P 8 + * N 1 5 a + * P 9 ^ a P 2 * P 8 ^ a P 4   RANK[0]
++P17+*N15a+*N12^aP2+*N6^aP3*P15^aP4
+⁇ + N 1 7 + * N 1 5 a + * N 1 2 ^ a P 2 + * N 6 ^ a P 3 * P 1 5 ^ a P 4   RANK[1]
++N12+*N1a+*N5^aP2+*P7^aP3*N3^aP4
+⁇ + P 1 2 + * P 1 a + * P 5 ^ a P 2 + * N 7 ^ a P 3 * P 3 ^ a P 4   RANK[2]
++N18+*N19a+*N19^aP2+*P9^aP3*P8^aP4
 ⁇False
-+N20+*N2a+*P4^aP2+*N17^aP3*N13^aP4
-⁇ + P 2 0 + * N 2 a + * P 4 ^ a P 2 + * N 1 7 ^ a P 3 * N 1 3 ^ a P 4   RANK[5]
-+P3+*P17a+*P20^aP2+*P17^aP3*P17^aP4
++P4+*N8a+*P9^aP2+*N9^aP3*N4^aP4
 ⁇False
-+N17+*N9a+*P19^aP2+*N5^aP3*P2^aP4
++P11+*N13a+*N6^aP2+*N15^aP3*N11^aP4
 ⁇False
-+P13+*N18a+*N4^aP2+*N4^aP3*N15^aP4
-⁇ + P 1 3 + * N 1 8 a + * N 4 ^ a P 2 + * N 4 ^ a P 3 * N 1 5 ^ a P 4   RANK[1]
-+P19+*N12a+*P16^aP2+*N13^aP3*N8^aP4
-⁇ + P 1 8 + * N 1 2 a + * P 1 6 ^ a P 2 + * N 1 3 ^ a P 3 * N 8 ^ a P 4   RANK[3]
-+N15+*P5a+*N13^aP2+*P6^aP3*N16^aP4
-⁇ + P 1 5 + * N 5 a + * P 1 3 ^ a P 2 + * N 6 ^ a P 3 * P 1 6 ^ a P 4   RANK[6]
-+N12+*P3a+*N4^aP2+*N10^aP3*N18^aP4
++P14+*N5a+*P10^aP2+*N2^aP3*N13^aP4
+⁇ + N 1 4 + * N 5 a + * P 1 0 ^ a P 2 + * N 2 ^ a P 3 * N 1 3 ^ a P 4   RANK[3]
++N15+*P17a+*P1^aP2+*N20^aP3*P5^aP4
+⁇ + P 1 5 + * P 1 7 a + * P 1 ^ a P 2 + * N 2 0 ^ a P 3 * P 5 ^ a P 4   RANK[9]
++P20+*P5a+*P6^aP2+*N8^aP3*P17^aP4
+⁇ + N 2 0 + * N 5 a + * N 6 ^ a P 2 + * P 8 ^ a P 3 * N 1 7 ^ a P 4   RANK[0]
++P7+*N12a+*P7^aP3*N11^aP4
 ⁇False
-+P9+*P9a+*N12^aP2+*N12^aP3*P1^aP4
++N20+*N9a+*P2^aP2+*N11^aP3*P6^aP4
 ⁇False
-+N19+*N20a+*P14^aP2+*P1^aP3*P14^aP4
-⁇ + P 1 9 + * P 2 0 a + * N 1 4 ^ a P 2 + * N 1 ^ a P 3 * N 1 4 ^ a P 4   RANK[8]
-+P2+*N10a+*P13^aP2+*P8^aP3*P20^aP4
-⁇ + P 2 + * P 1 0 a + * N 1 3 ^ a P 2 + * N 8 ^ a P 3 * N 2 0 ^ a P 4   RANK[1]
-+P12+*N15a+*P8^aP2+*P8^aP3*N5^aP4
++N4+*P2a+*N8^aP2+*N7^aP3*N19^aP4
+⁇ + P 4 + * N 2 a + * P 8 ^ a P 2 + * P 7 ^ a P 3 * P 1 9 ^ a P 4   RANK[3]
++P7+*P17a+*N5^aP2+*N4^aP3*P16^aP4
 ⁇False
-+P8+*N7a+*P9^aP2+*N12^aP3*P9^aP4
++N13+*N12a+*P18^aP2+*P10^aP3*N16^aP4
+⁇ + P 1 2 + * N 1 2 a + * P 1 8 ^ a P 2 + * P 1 0 ^ a P 3 * N 1 6 ^ a P 4   RANK[0]
++N7+*N5a+*P8^aP2+*N20^aP3*P4^aP4
+⁇ + P 8 + * P 5 a + * N 8 ^ a P 2 + * P 2 0 ^ a P 3 * N 4 ^ a P 4   RANK[2]
++N2+*N17a+*N6^aP2+*N10^aP3*N7^aP4
 ⁇False
-+P3+*N12a+*N7^aP2+*N18^aP3*N13^aP4
++P15+*N12a+*N8^aP2+*P4^aP3*N14^aP4
+⁇ + P 1 5 + * N 1 2 a + * N 8 ^ a P 2 + * P 4 ^ a P 3 * N 1 4 ^ a P 4   RANK[0]
++N17+*P11a+*P17^aP2+*P19^aP3*P14^aP4
 ⁇False
-+N6+*P18a+*N16^aP2+*N3^aP3*N18^aP4
++N8+*N6a+*P13^aP2+*N15^aP3*P4^aP4
 ⁇False
-+N1+*P14a+*P15^aP2+*P16^aP3*P20^aP4
++P8+*N15a+*P5^aP2+*N6^aP3*P16^aP4
+⁇ + P 8 + * N 1 5 a + * P 5 ^ a P 2 + * N 6 ^ a P 3 * P 1 6 ^ a P 4   RANK[8]
++P8+*P16a+*P2^aP2+*N17^aP3*P7^aP4
 ⁇False
-+N3+*N5a+*P16^aP2+*P4^aP3*N9^aP4
++N16+*N20a+*P8^aP2+*P2^aP3*P12^aP4
+⁇ + P 1 6 + * N 2 0 a + * P 8 ^ a P 2 + * P 2 ^ a P 3 * P 1 2 ^ a P 4   RANK[3]
++N8+*N13a+*P9^aP2+*P18^aP3*N3^aP4
+⁇ + P 8 + * P 1 3 a + * N 9 ^ a P 2 + * N 1 8 ^ a P 3 * P 3 ^ a P 4   RANK[5]
++N16+*N2^aP2+*P7^aP3*N8^aP4
+⁇ + N 1 6 + * N 2 ^ a P 2 + * P 7 ^ a P 3 * N 8 ^ a P 4   RANK[1]
++P14+*N17a+*N7^aP2+*N17^aP3*P12^aP4
 ⁇False
-+N11+*N4a+*N3^aP2*N5^aP4
++N11+*P13a+*P9^aP2+*N7^aP3*N8^aP4
+⁇ + P 1 1 + * N 1 3 a + * N 9 ^ a P 2 + * P 7 ^ a P 3 * P 8 ^ a P 4   RANK[2]
++P5+*N19a+*N17^aP2*N16^aP4
+⁇ + N 4 + * P 1 9 a + * P 1 7 ^ a P 2 * P 1 6 ^ a P 4   RANK[0]
++N20+*P14a+*N9^aP2+*N3^aP3*P16^aP4
+⁇ + P 2 0 + * N 1 4 a + * P 9 ^ a P 2 + * P 3 ^ a P 3 * N 1 6 ^ a P 4   RANK[7]
++N17+*N9a+*P1^aP2+*P5^aP3*P7^aP4
+⁇ + P 1 7 + * N 9 a + * P 1 ^ a P 2 + * P 5 ^ a P 3 * P 7 ^ a P 4   RANK[1]
++P3+*P20a+*P4^aP2+*P20^aP3*P18^aP4
 ⁇False
-+P17+*P1a+*P13^aP2+*P1^aP3*N16^aP4
-⁇ + P 1 7 + * N 1 a + * N 1 3 ^ a P 2 + * N 1 ^ a P 3 * P 1 6 ^ a P 4   RANK[1]
-+N3+*N14a+*P4^aP2+*N1^aP3*P8^aP4
-⁇ + P 3 + * N 1 4 a + * P 4 ^ a P 2 + * N 1 ^ a P 3 * P 8 ^ a P 4   RANK[3]
-+P14+*P8a+*P20^aP2+*P6^aP3*P17^aP4
-⁇ + P 1 4 + * N 8 a + * N 2 0 ^ a P 2 + * N 6 ^ a P 3 * N 1 7 ^ a P 4   RANK[0]
-+P7+*P15a+*N7^aP2+*P20^aP3*P13^aP4
++P15+*N3a+*N19^aP2+*P8^aP3*P18^aP4
 ⁇False
-+P12+*P4a+*P12^aP2+*N20^aP3*P10^aP4
++N18+*N4a+*P3^aP2+*P1^aP3*N1^aP4
 ⁇False
-+P18+*P16a+*N18^aP2+*P11^aP3*P19^aP4
-⁇ + P 1 9 + * N 1 6 a + * P 1 8 ^ a P 2 + * N 1 1 ^ a P 3 * N 1 9 ^ a P 4   RANK[6]
-+N5+*P11a+*P8^aP2+*P9^aP3*P2^aP4
-⁇ + N 6 + * N 1 1 a + * N 8 ^ a P 2 + * N 9 ^ a P 3 * N 2 ^ a P 4   RANK[0]
-+P7+*N9a+*N10^aP2+*P17^aP3*N15^aP4
++N19+*P8a+*P15^aP2+*N2^aP3*N9^aP4
 ⁇False
-+P19+*P1^aP2+*P9^aP3*N6^aP4
-⁇ + P 1 8 + * N 1 ^ a P 2 + * N 9 ^ a P 3 * P 6 ^ a P 4   RANK[0]
-+N2+*P12a+*N1^aP2+*N14^aP3*N1^aP4
-⁇ + N 2 + * P 1 2 a + * N 1 ^ a P 2 + * N 1 4 ^ a P 3 * N 1 ^ a P 4   RANK[5]
-+P16+*P2a+*P8^aP2+*N6^aP3*P4^aP4
-⁇ + P 1 8 + * P 2 a + * P 8 ^ a P 2 + * N 6 ^ a P 3 * P 4 ^ a P 4   RANK[1]
-+P15+*N15a+*P5^aP2+*N6^aP3*N2^aP4
++N13+*P14a+*P11^aP2+*N15^aP3*N9^aP4
+⁇ + P 1 3 + * N 1 4 a + * N 1 1 ^ a P 2 + * P 1 5 ^ a P 3 * P 9 ^ a P 4   RANK[4]
++P12+*N11a+*N3^aP2+*P8^aP3*N3^aP4
 ⁇False
-+P3+*N12a+*N14^aP2+*P9^aP3*P6^aP4
-⁇ + P 5 + * P 1 2 a + * P 1 4 ^ a P 2 + * N 9 ^ a P 3 * N 6 ^ a P 4   RANK[3]
-+N3+*P8a+*N12^aP2+*N6^aP3*N3^aP4
++P5+*P5a+*P14^aP2+*P18^aP3*P15^aP4
 ⁇False
-+P18+*N12a+*P18^aP2+*P12^aP3*N16^aP4
-⁇ + N 1 7 + * N 1 2 a + * P 1 8 ^ a P 2 + * P 1 2 ^ a P 3 * N 1 6 ^ a P 4   RANK[6]
-+N20+*P9a+*N1^aP2+*P11^aP3*N6^aP4
-⁇ + P 2 0 + * N 9 a + * P 1 ^ a P 2 + * N 1 1 ^ a P 3 * P 6 ^ a P 4   RANK[4]
-+P1+*N16a+*N5^aP2+*N10^aP3*P11^aP4
-⁇ + * N 1 6 a + * N 5 ^ a P 2 + * N 1 0 ^ a P 3 * P 1 1 ^ a P 4   RANK[1]
-+N7+*N6a+*P18^aP2+*N5^aP3*P10^aP4
-⁇ + P 4 + * N 6 a + * P 1 8 ^ a P 2 + * N 5 ^ a P 3 * P 1 0 ^ a P 4   RANK[0]
++P16+*N4a+*N5^aP2+*N10^aP3*P9^aP4
+⁇ + N 1 6 + * N 4 a + * N 5 ^ a P 2 + * N 1 0 ^ a P 3 * P 9 ^ a P 4   RANK[0]
++P5+*N3a+*N9^aP2+*P2^aP3*P11^aP4
+⁇ + P 5 + * P 3 a + * P 9 ^ a P 2 + * N 2 ^ a P 3 * N 1 1 ^ a P 4   RANK[7]
++P8+*N15a+*P17^aP2+*P11^aP3*P18^aP4
+⁇ + P 9 + * N 1 5 a + * P 1 7 ^ a P 2 + * P 1 1 ^ a P 3 * P 1 8 ^ a P 4   RANK[0]
++N13+*N13a+*N2^aP2+*P2^aP3*N5^aP4
+⁇ + N 1 3 + * N 1 3 a + * N 2 ^ a P 2 + * P 2 ^ a P 3 * N 5 ^ a P 4   RANK[7]
++N9+*P5a+*N12^aP2+*P20^aP3*P15^aP4
+⁇ + P 9 + * P 5 a + * N 1 2 ^ a P 2 + * P 2 0 ^ a P 3 * P 1 5 ^ a P 4   RANK[6]
++N19+*N14a+*N4^aP2+*N9^aP3*N9^aP4
+⁇ + P 1 9 + * N 1 4 a + * N 4 ^ a P 2 + * N 9 ^ a P 3 * N 9 ^ a P 4   RANK[1]
++N2+*P18a+*P20^aP2+*N11^aP3*N8^aP4
+⁇False
++P2+*N1a+*P17^aP2+*P9^aP3*N10^aP4
+⁇ + N 2 + * P 1 a + * N 1 7 ^ a P 2 + * N 9 ^ a P 3 * P 1 0 ^ a P 4   RANK[7]
++P10+*P20a+*N10^aP2+*P5^aP3*N3^aP4
+⁇ + N 1 0 + * N 2 0 a + * P 1 0 ^ a P 2 + * N 5 ^ a P 3 * P 3 ^ a P 4   RANK[3]
++N1+*P4a+*P9^aP2+*N11^aP3*N18^aP4
+⁇ + P 1 + * N 4 a + * N 9 ^ a P 2 + * P 1 1 ^ a P 3 * P 1 8 ^ a P 4   RANK[2]
 Statistics at line 99 :
-Beam width 1: 25 out of 100: 25.00%
-Beam width 2: 30 out of 100: 30.00%
-Beam width 3: 38 out of 100: 38.00%
-Beam width 4: 47 out of 100: 47.00%
-Beam width 5: 54 out of 100: 54.00%
-Beam width 6: 58 out of 100: 58.00%
-Beam width 7: 60 out of 100: 60.00%
-Beam width 8: 62 out of 100: 62.00%
-Beam width 9: 62 out of 100: 62.00%
-Beam width 10: 62 out of 100: 62.00%
+Beam width 1: 17 out of 100: 17.00%
+Beam width 2: 25 out of 100: 25.00%
+Beam width 3: 29 out of 100: 29.00%
+Beam width 4: 31 out of 100: 31.00%
+Beam width 5: 35 out of 100: 35.00%
+Beam width 6: 42 out of 100: 42.00%
+Beam width 7: 47 out of 100: 47.00%
+Beam width 8: 48 out of 100: 48.00%
+Beam width 9: 50 out of 100: 50.00%
+Beam width 10: 50 out of 100: 50.00%
 
