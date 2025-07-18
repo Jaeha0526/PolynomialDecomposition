@@ -1,4 +1,4 @@
-# Discovering Hidden Algebraic Structures via Transformers
+# Discovering Hidden Algebraic Structures via Transformers with Rank-Aware Beam GRPO
 
 This repository contains code and resources for the paper ["Discovering Hidden Algebraic Structures via Transformers with Rank-Aware Beam GRPO"](https://openreview.net/forum?id=lO9q5itiqK&invitationId=ICML.cc/2025/Workshop/MOSS/Submission72/-/Revision&referrer=%5BTasks%5D(%2Ftasks)). Our research explores the potential of transformer models to recognize and decompose hidden algebraic substructures within polynomials.
 
