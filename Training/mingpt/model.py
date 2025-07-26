@@ -19,16 +19,9 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from transformers.modeling_outputs import CausalLMOutputWithPast # Import the standard output class
-from transformers.modeling_outputs import CausalLMOutputWithPast # Import the standard output class
 
 torch.manual_seed(1)
 
-# Helper function needed for the new generate method
-def top_k_logits(logits, k):
-    v, ix = torch.topk(logits, k)
-    out = logits.clone()
-    out[out < v[:, [-1]]] = -float('Inf')
-    return out
 # Helper function needed for the new generate method
 def top_k_logits(logits, k):
     v, ix = torch.topk(logits, k)
@@ -82,7 +75,7 @@ class CausalSelfAttention(nn.Module):
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
 
-        att = att.masked_fill(self.mask[:, :, :T, :T] == 0, -1e10)
+        att = att.masked_fill(self.mask[:, :, :T, :T] == 0, -float('inf'))
         att = F.softmax(att, dim=-1)
         att = self.attn_drop(att)
         self.attention_weights = att
@@ -132,8 +125,6 @@ class GPTConfig:
     embd_pdrop = 0.1
     resid_pdrop = 0.1
     attn_pdrop = 0.1
-    perceiver = False
-    bottleneck_dim = None
 
     def __init__(self, vocab_size, block_size, **kwargs):
         self.vocab_size = vocab_size
@@ -147,9 +138,6 @@ class GPTConfig:
             # This case should ideally not happen if n_embd is always passed
             print("Warning: n_embd not found in GPTConfig kwargs. Cannot set hidden_size automatically.")
             self.hidden_size = None # Or raise an error
-            
-        # Add _name_or_path for TRL compatibility
-        self._name_or_path = kwargs.get('name_or_path', None)
             
         # Add _name_or_path for TRL compatibility
         self._name_or_path = kwargs.get('name_or_path', None)
@@ -171,7 +159,6 @@ class GPT(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config=config
-        self.warnings_issued = {}  # Add warnings_issued dictionary for TRL compatibility
         self.warnings_issued = {}  # Add warnings_issued dictionary for TRL compatibility
 
         # input embedding stem
@@ -231,10 +218,7 @@ class GPT(nn.Module):
         b, t = idx.size()
         assert (
             t <= self.block_size
-        ), "Cannot forward, model block size (%d, %d) is exhausted." % (
-            t,
-            self.block_size,
-        )
+        ), f"Cannot forward, model block size ({t}, {self.block_size}) is exhausted."
 
         # forward the GPT model
         token_embeddings = self.tok_emb(idx)  # each index maps to a (learnable) vector
@@ -248,7 +232,7 @@ class GPT(nn.Module):
         for block in self.blocks:
             if return_attentions:
                 x, attn_weights = block(x, return_attentions=True)
-                attentions.append(attn_weights.detach().cpu() if attn_weights is not None else None)
+                attentions.append(attn_weights.detach() if attn_weights is not None else None)
             else:
                 x = block(x)
 
@@ -364,15 +348,12 @@ class GPT(nn.Module):
         x = x.to(device)  # Ensure input is on GPU
         print(f"[DEBUG] data device: {x.device}")
         
-        # Remove trailing zeros from input sequence
-        # Convert to list for easier manipulation
-        seq_list = x[0].tolist()
+        # Remove trailing zeros from input sequence using tensor operations
         # Find last non-zero element
-        last_nonzero = len(seq_list) - 1
-        while last_nonzero >= 0 and seq_list[last_nonzero] == 0:
-            last_nonzero -= 1
-        # Truncate sequence and convert back to tensor on device
-        x = torch.tensor(seq_list[:last_nonzero + 1]).unsqueeze(0).to(device)
+        non_zero_mask = x[0] != 0
+        if non_zero_mask.any():
+            last_nonzero = non_zero_mask.nonzero()[-1].item()
+            x = x[:, :last_nonzero + 1]
         
         block_size = self.get_block_size()
         self.eval()
@@ -439,8 +420,7 @@ class GPT(nn.Module):
                     #print(f"[{k},{beam_i},{i}] : new_seq : {new_seq}\n")
 
                     # Update cumulative log probability
-                    new_log_prob_list = log_prob_list.copy()
-                    new_log_prob_list.append(torch.log(topk_probs[0, i]).item())
+                    new_log_prob_list = log_prob_list + [torch.log(topk_probs[0, i]).item()]
                     total_logb = sum(new_log_prob_list)
 
                     #print(f"Step {k} beam {i} : append {torch.log(topk_probs[0, i]).item()} : {new_log_prob_list}\n")
