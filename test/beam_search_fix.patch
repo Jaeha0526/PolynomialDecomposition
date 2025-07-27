@@ -1,0 +1,29 @@
+--- a/Training/mingpt/model_kvcache.py
++++ b/Training/mingpt/model_kvcache.py
+@@ -257,11 +257,24 @@ class GPTWithKVCache(GPT):
+             if all(beam['finished'] for beam in beams):
+                 break
+         
+-        # Return sequences from all beams - squeeze batch dimension to match expected output
+-        # Original beam search returns (beam_width, sequence_length) so we squeeze the batch dim
+-        stacked = torch.stack([beam['sequence'] for beam in beams])
++        # FIX: Pad sequences to the same length before stacking
++        # This handles the case where different beams have different sequence lengths
++        max_length = max(beam['sequence'].size(1) for beam in beams)
++        
++        padded_sequences = []
++        for beam in beams:
++            seq = beam['sequence']
++            if seq.size(1) < max_length:
++                # Pad with pad_token if provided, otherwise use 0
++                padding_value = pad_token if pad_token is not None else 0
++                padding = torch.full((seq.size(0), max_length - seq.size(1)), 
++                                     padding_value, dtype=seq.dtype, device=seq.device)
++                seq = torch.cat([seq, padding], dim=1)
++            padded_sequences.append(seq)
++        
++        # Stack padded sequences
++        stacked = torch.stack(padded_sequences)
+         if stacked.dim() == 3 and stacked.size(1) == 1:
+             stacked = stacked.squeeze(1)
+         return stacked

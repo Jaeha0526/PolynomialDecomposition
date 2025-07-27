@@ -24,7 +24,7 @@ class GPTWithKVCache(GPT):
         self.use_flash_attention = use_flash_attention
         print(f"GPTWithKVCache initialized with {'Flash' if use_flash_attention else 'Standard'} Attention + KV-Cache")
     
-    def forward(self, idx, targets=None, past_key_values=None, use_cache=False, return_attentions=False):
+    def forward(self, idx, targets=None, past_key_values=None, use_cache=False, return_attentions=False, output_hidden_states=False):
         """
         Forward pass with KV-cache support.
         
@@ -85,6 +85,13 @@ class GPTWithKVCache(GPT):
         
         # Final layer norm and output projection
         x = self.ln_f(x)
+        
+        # Store hidden states before projection if requested
+        hidden_states = None
+        if output_hidden_states:
+            # x contains the final hidden states after layer norm
+            hidden_states = (x,)  # TRL expects a tuple
+        
         logits = self.head(x)
         
         # Calculate loss if targets provided
@@ -93,14 +100,27 @@ class GPTWithKVCache(GPT):
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
         
         # Return based on what was requested
-        if use_cache and return_attentions:
-            return logits, loss, present_key_values, all_attentions
-        elif use_cache:
-            return logits, loss, present_key_values
-        elif return_attentions:
-            return logits, loss, all_attentions
+        # Note: We need to maintain backward compatibility with existing code
+        if output_hidden_states:
+            # When hidden states are requested, return them in all cases
+            if use_cache and return_attentions:
+                return logits, loss, present_key_values, all_attentions, hidden_states
+            elif use_cache:
+                return logits, loss, present_key_values, hidden_states
+            elif return_attentions:
+                return logits, loss, all_attentions, hidden_states
+            else:
+                return logits, loss, hidden_states
         else:
-            return logits, loss
+            # Original return format when hidden states not requested
+            if use_cache and return_attentions:
+                return logits, loss, present_key_values, all_attentions
+            elif use_cache:
+                return logits, loss, present_key_values
+            elif return_attentions:
+                return logits, loss, all_attentions
+            else:
+                return logits, loss
     
     @torch.no_grad()
     def generate_with_cache(self, idx, max_new_tokens, temperature=1.0, do_sample=False, top_k=None):
@@ -237,9 +257,23 @@ class GPTWithKVCache(GPT):
             if all(beam['finished'] for beam in beams):
                 break
         
-        # Return sequences from all beams - squeeze batch dimension to match expected output
-        # Original beam search returns (beam_width, sequence_length) so we squeeze the batch dim
-        stacked = torch.stack([beam['sequence'] for beam in beams])
+        # FIX: Pad sequences to the same length before stacking
+        # This handles the case where different beams have different sequence lengths
+        max_length = max(beam['sequence'].size(1) for beam in beams)
+        
+        padded_sequences = []
+        for beam in beams:
+            seq = beam['sequence']
+            if seq.size(1) < max_length:
+                # Pad with pad_token if provided, otherwise use 0
+                padding_value = pad_token if pad_token is not None else 0
+                padding = torch.full((seq.size(0), max_length - seq.size(1)), 
+                                     padding_value, dtype=seq.dtype, device=seq.device)
+                seq = torch.cat([seq, padding], dim=1)
+            padded_sequences.append(seq)
+        
+        # Stack padded sequences
+        stacked = torch.stack(padded_sequences)
         if stacked.dim() == 3 and stacked.size(1) == 1:
             stacked = stacked.squeeze(1)
         return stacked

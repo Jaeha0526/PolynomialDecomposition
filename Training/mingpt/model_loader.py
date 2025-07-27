@@ -185,7 +185,7 @@ class SymbolicTokenizer:
         # (e.g., tokenizer_config.json, special_tokens_map.json)
         pass
 
-def load_model_and_tokenizer(config_path: str, model_dir_path: str, device: str = 'cpu', wrap_for_grpo: bool = False, model_name: str = None) -> Tuple[torch.nn.Module, SymbolicTokenizer]:
+def load_model_and_tokenizer(config_path: str, model_dir_path: str, device: str = 'cpu', wrap_for_grpo: bool = False, model_name: str = None, use_kvcache: bool = False) -> Tuple[torch.nn.Module, SymbolicTokenizer]:
     """
     Loads the GPT model and SymbolicTokenizer based on a configuration file.
     Optionally wraps the model with a ValueHead for PPO/TRL training compatibility.
@@ -273,9 +273,20 @@ def load_model_and_tokenizer(config_path: str, model_dir_path: str, device: str 
         name_or_path=model_name_to_use  # Add the model name for TRL compatibility
     )
     print(f"Model config: {model_config}")
-    # Use the new GPT_hf subclass for better HF compatibility
-    base_model = nanogpt_model.GPT_hf(model_config)
-    print("Base GPT_hf model instantiated.")
+    
+    # Choose model type based on use_kvcache flag
+    if use_kvcache:
+        # Import the KV-cache HF model
+        try:
+            from .model_hf_kvcache import GPT_hf_KVCache
+        except ImportError:
+            from model_hf_kvcache import GPT_hf_KVCache
+        base_model = GPT_hf_KVCache(model_config)
+        print("GPT_hf_KVCache model instantiated with Flash Attention + KV-Cache.")
+    else:
+        # Use the standard GPT_hf subclass for HF compatibility
+        base_model = nanogpt_model.GPT_hf(model_config)
+        print("Base GPT_hf model instantiated.")
 
     # --- Load Model Weights ---
     print(f"Loading model weights from {model_weights_path} onto device '{device}'...")
@@ -286,8 +297,13 @@ def load_model_and_tokenizer(config_path: str, model_dir_path: str, device: str 
             print("Adjusting state_dict keys (removing 'module.' prefix)...")
             state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
 
-        base_model.load_state_dict(state_dict)
-        print(f"Successfully loaded state_dict from {model_weights_path}")
+        if use_kvcache:
+            # For KV-cache model, use strict=False to ignore attention mask differences
+            base_model.load_state_dict(state_dict, strict=False)
+            print(f"Successfully loaded state_dict from {model_weights_path} (with strict=False for KV-cache)")
+        else:
+            base_model.load_state_dict(state_dict)
+            print(f"Successfully loaded state_dict from {model_weights_path}")
     except Exception as e:
         print(f"Error loading state_dict: {e}")
         raise
