@@ -23,6 +23,7 @@ Our implementation is based on [Andrej Karpathy's minGPT](https://github.com/kar
 - Polynomial-specific tokenization
 - Parallelized evaluation
 - Integrated beam search with direct Mathematica evaluation
+- Flash Attention support for 2-3x faster training (automatically enabled)
 
 ## Getting Started
 

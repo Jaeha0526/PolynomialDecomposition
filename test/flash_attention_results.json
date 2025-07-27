@@ -1,0 +1,29 @@
+{
+  "baseline": {
+    "model": "Baseline GPT",
+    "avg_time_ms": 45.91727256774902,
+    "throughput_samples_per_sec": 5575.2440352872145,
+    "min_time_ms": 45.91727256774902,
+    "max_time_ms": 45.91727256774902,
+    "num_iterations": 1,
+    "device": "cuda:0",
+    "batch_size": 256,
+    "peak_memory_mb": 4106.13427734375
+  },
+  "flash_attention": {
+    "model": "Flash Attention GPT",
+    "avg_time_ms": 17.84038543701172,
+    "throughput_samples_per_sec": 14349.46576147966,
+    "min_time_ms": 17.84038543701172,
+    "max_time_ms": 17.84038543701172,
+    "num_iterations": 1,
+    "device": "cuda:0",
+    "batch_size": 256,
+    "peak_memory_mb": 3140.50439453125
+  },
+  "improvements": {
+    "speedup": 2.5737825412947024,
+    "throughput_improvement": 2.573782541294703,
+    "memory_reduction_percent": 23.516763398131346
+  }
+}

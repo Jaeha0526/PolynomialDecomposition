@@ -15,6 +15,7 @@ import trainer
 import utils
 import wandb
 from itertools import groupby
+from flash_attention_module import replace_attention_with_flash_attention
 
 utils.set_seed(148)
 
@@ -122,6 +123,9 @@ model_cfg = model.GPTConfig(
 )
 gpt = model.GPT(model_cfg)
 gpt.to(device)
+
+# Convert to Flash Attention for faster training
+gpt = replace_attention_with_flash_attention(gpt)
 
 
 if args.mode == "inequality_finetune":
