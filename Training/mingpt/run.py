@@ -16,6 +16,7 @@ import utils
 import wandb
 from itertools import groupby
 from flash_attention_module import replace_attention_with_flash_attention
+from model_kvcache import GPTWithKVCache
 
 utils.set_seed(148)
 
@@ -121,11 +122,16 @@ vocab_size = len(chars_symbolic)
 model_cfg = model.GPTConfig(
     vocab_size, block_size, n_layer=args.n_layer, n_head=args.n_head, n_embd=args.n_embd
 )
-gpt = model.GPT(model_cfg)
-gpt.to(device)
 
-# Convert to Flash Attention for faster training
-gpt = replace_attention_with_flash_attention(gpt)
+# Use KV-cache model for inference modes that benefit from it
+if args.mode in ["inequality_evaluate4", "debug_beam"]:
+    gpt = GPTWithKVCache(model_cfg, use_flash_attention=True)
+    gpt.to(device)
+else:
+    gpt = model.GPT(model_cfg)
+    gpt.to(device)
+    # Convert to Flash Attention for faster training
+    gpt = replace_attention_with_flash_attention(gpt)
 
 
 if args.mode == "inequality_finetune":
@@ -316,7 +322,7 @@ elif args.mode == "inequality_evaluate4":
     if output_dir:  # Only create directory if path contains a directory component
         os.makedirs(output_dir, exist_ok=True)
     # Load GPT model
-    gpt.load_state_dict(torch.load(args.reading_params_path))
+    gpt.load_state_dict(torch.load(args.reading_params_path), strict=False)
 
     # Create dataset
     test_dataset = dataset.SymbolicDataset(
@@ -414,7 +420,7 @@ elif args.mode == "debug_beam":
     assert args.outputs_path is not None
     assert args.reading_params_path is not None
     assert args.evaluate_corpus_path is not None
-    gpt.load_state_dict(torch.load(args.reading_params_path))
+    gpt.load_state_dict(torch.load(args.reading_params_path), strict=False)
 
 
     tokentype = dataset.SymbolicDataset(

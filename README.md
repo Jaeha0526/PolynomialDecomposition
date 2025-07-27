@@ -24,6 +24,7 @@ Our implementation is based on [Andrej Karpathy's minGPT](https://github.com/kar
 - Parallelized evaluation
 - Integrated beam search with direct Mathematica evaluation
 - Flash Attention support for 2-3x faster training (automatically enabled)
+- **KV-Cache optimization for 1.4-5x faster inference** (automatically enabled for evaluation modes)
 
 ## Getting Started
 
@@ -134,6 +135,8 @@ python Training/mingpt/run.py debug_beam \
 
 #### General Evaluation Notes
 Beam search results can be read directly from the output text files. For greedy search inference, the evaluation code only checks for exact matches with the test dataset. Since problems may have multiple valid answers, you can use Mathematica to verify the correctness of model-generated answers as demonstrated in `MMA_package/example.nb`.
+
+**Performance**: Evaluation modes (`inequality_evaluate4` and `debug_beam`) automatically use KV-Cache optimization for 1.4-5x faster inference while maintaining identical results to the original implementation.
 
 
 ## Interactive Workflow

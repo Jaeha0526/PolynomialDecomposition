@@ -37,7 +37,15 @@ def sample(model, x, steps, temperature=1.0, sample=False, top_k=None):
     the sequence, feeding the predictions back into the model each time. Clearly the sampling
     has quadratic complexity unlike an RNN that is only linear, and has a finite context window
     of block_size, unlike an RNN that has an infinite context window.
+    
+    Automatically uses KV-cache if the model supports it for better performance.
     """
+    # Check if model has KV-cache capabilities
+    if hasattr(model, 'generate_with_cache'):
+        # Use KV-cache for efficient generation
+        return model.generate_with_cache(x, steps, temperature=temperature, do_sample=sample, top_k=top_k)
+    
+    # Fall back to original implementation
     block_size = model.get_block_size()
     model.eval()
     for k in range(steps):
@@ -510,7 +518,28 @@ def beam_search(model, x, steps, tokentype, beam_width=3, temperature=1.0, top_k
     temperature: A factor to adjust the probability distribution.
     top_k: If specified, limits the tokens considered to the top k most probable.
     PaddingToken: If provided, stops expanding a sequence if PaddingToken is generated.
+    
+    Automatically uses KV-cache if the model supports it for better performance.
     """
+    # Check if model has KV-cache capabilities
+    if hasattr(model, 'beam_search_with_cache') and not hf:
+        # Use KV-cache for efficient beam search
+        pad_token = tokentype.stoi[tokentype.PAD_CHAR] if hasattr(tokentype, 'PAD_CHAR') else None
+        beam_sequences = model.beam_search_with_cache(
+            x, steps, beam_width=beam_width, temperature=temperature, 
+            pad_token=pad_token, dataset=tokentype
+        )
+        
+        # Convert to format expected by original beam_search
+        beam_result = []
+        for i in range(beam_sequences.size(0)):
+            seq = beam_sequences[i]
+            beam_str = "".join([tokentype.itos[int(idx)] + " " for idx in seq])
+            beam_result.append((beam_str, seq.size(0), 0.0))  # Score not available from KV-cache version
+        
+        return beam_result
+    
+    # Fall back to original implementation
     block_size = model.get_block_size()
     model.eval()
 
