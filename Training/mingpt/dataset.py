@@ -12,11 +12,12 @@ from torch.utils.data import Dataset
 
 
 class SymbolicDataset(Dataset):
-    def __init__(self, block_size, chars_symbolic, data):
+    def __init__(self, block_size, chars_symbolic, data, use_extended_vocab=False):
         self.MASK_CHAR = u"\u2047" # the doublequestionmark character, for mask
         self.PAD_CHAR = u"\u25A1" # the empty square character, for pad
         self.block_size = block_size
         self.data = list(data.split('\n'))
+        self.use_extended_vocab = use_extended_vocab
 
         # for our symbolic project
         
@@ -66,8 +67,21 @@ class SymbolicDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        data_here = self.data[idx].replace('?','⁇')
-        inp, oup = data_here.split('⁇')
+        data_here = self.data[idx]
+        
+        # For multi-variable (extended vocab), keep '?' as separator
+        # For single-variable, convert '?' to '⁇' for backward compatibility
+        if self.use_extended_vocab:
+            # Multi-variable uses '?' as separator
+            if '?' in data_here:
+                inp, oup = data_here.split('?')
+            else:
+                # Fallback to ⁇ if ? not found
+                inp, oup = data_here.split('⁇')
+        else:
+            # Single-variable uses '⁇' as separator
+            data_here = data_here.replace('?','⁇')
+            inp, oup = data_here.split('⁇')
         inp = inp.split(' ')
         inp = [item for item in inp if item != '']
         oup = oup.split(' ')

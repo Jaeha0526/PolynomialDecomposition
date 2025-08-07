@@ -48,8 +48,9 @@ class GPTWithKVCache(GPT):
             # Get the sequence length from the cache
             past_length = past_key_values[0][0].size(2)  # (batch, n_head, seq_len, head_dim)
             # Make sure we're not exceeding block size
-            assert past_length + t <= self.block_size, \
-                f"Cannot forward, sequence length {past_length + t} exceeds block size {self.block_size}"
+            # Allow reprocessing last token for generation (past_length + 1 when t=1)
+            assert past_length + t <= self.block_size + 1, \
+                f"Cannot forward, sequence length {past_length + t} exceeds block size {self.block_size} + 1"
         else:
             past_length = 0
             assert t <= self.block_size, \

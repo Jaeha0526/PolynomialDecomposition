@@ -1,6 +1,11 @@
 .venv
 venv
+.venv_uv/
 wandb
+test/
+.claude/
+test_outputs/
+dev/
 
 # Python cache files
 __pycache__/
@@ -38,7 +43,8 @@ profile_default/
 ipython_config.py
 
 # Data storage directories
-data_storage/outputs/
+data_storage/outputs/*
+!data_storage/outputs/*_BGRPO/
 data_storage/dataset/predictions/
 data_storage/model/BGRPO
 

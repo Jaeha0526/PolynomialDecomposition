@@ -58,6 +58,8 @@ argp.add_argument("--short_prediction", default=False)
 argp.add_argument("--num_samples", type=int, default=30, help="Number of samples for multisampling")
 argp.add_argument("--sympy", default=0, type=int)
 argp.add_argument("--test", default=0, type=int)
+argp.add_argument("--extended_vocab", action="store_true", 
+                  help="Use extended vocabulary for multi-variable polynomial decomposition")
 args = argp.parse_args()
 
 if args.lr_decay == 1:
@@ -94,25 +96,33 @@ pretrain_dataset = []
 #         open(args.pretrain_corpus_path, encoding="utf-8").read(),
 #     )
 
-# chars_symbolic = [
-#     "□","dsafdsf","dd","wet",
-#     "a","b","c","d","e","x","y","z",
-#     "⁇","O",
-#     "a0","a1","a2","a3","a4","a5","a6","a7","a8","a9","a10",
-#     "a11","a12","a13","a14","a15","a16","a17","a18",
-#     "b0","b1","b2","b3","b4","b5","b6","b7","b8","b9",
-#     "b10","b11","b12","b13","b14","b15","b16","b17","b18",
-#     "n1","n2","n3","n4","n5","n6","n7","n8","n9",
-#     "n10","n11","n12","n13","n14","n15","n16","n17","n18",
-#     "N","P","~","$","&","+","*","^","/","-",":",
-# ] + [str(i) for i in range(0, args.max_number_token)] # ["a19","a20","a21","a22"]
-chars_symbolic = [
-    "□",
-    "a","b","c","d","e","x","y","z",
-    "⁇","?",
-    "a0","a1","b0","b1",
-    "N","P","&","+","*","^",
-] + [str(i) for i in range(0, 10)]
+# Select vocabulary based on extended_vocab flag
+if args.extended_vocab:
+    # Extended vocabulary for multi-variable polynomial decomposition
+    chars_symbolic = [
+        "□",
+        "a","b","c","d","e","x","y","z",
+        "⁇","?",
+        "a0","a1","a2","a3","a4","a5","a6","a7","a8","a9","a10",
+        "a11","a12","a13","a14","a15","a16","a17","a18",
+        "b0","b1","b2","b3","b4","b5","b6","b7","b8","b9",
+        "b10","b11","b12","b13","b14","b15","b16","b17","b18",
+        "n1","n2","n3","n4","n5","n6","n7","n8","n9",
+        "n10","n11","n12","n13","n14","n15","n16","n17","n18",
+        "N","P","&","+","*","^",
+    ] + [str(i) for i in range(0, args.max_number_token)]
+    print(f"📚 Using extended vocabulary for multi-variable support ({len(chars_symbolic)} tokens)")
+    print(f"   Number tokens: 0 to {args.max_number_token-1}")
+else:
+    # Simple vocabulary for single-variable polynomial decomposition (default)
+    chars_symbolic = [
+        "□",
+        "a","b","c","d","e","x","y","z",
+        "⁇","?",
+        "a0","a1","b0","b1",
+        "N","P","&","+","*","^",
+    ] + [str(i) for i in range(0, 10)]
+    print(f"📚 Using simple vocabulary for single-variable ({len(chars_symbolic)} tokens)")
 
 chars_symbolic_new = []
 
@@ -142,12 +152,14 @@ if args.mode == "inequality_finetune":
         block_size,
         chars_symbolic,
         open(args.finetune_corpus_path, encoding="utf-8").read(),
+        use_extended_vocab=args.extended_vocab
     )
 
     valid_dataset = dataset.SymbolicDataset(
         block_size,
         chars_symbolic,
         open(args.valid_corpus_path, encoding="utf-8").read(),
+        use_extended_vocab=args.extended_vocab
     )
 
     # Checking pretraining and be ready for training
@@ -238,6 +250,7 @@ elif args.mode == "inequality_evaluate":
         block_size,
         chars_symbolic,
         open(args.evaluate_corpus_path, encoding="utf-8").read(),
+        use_extended_vocab=args.extended_vocab
     )
     correct = 0
     total = 0
@@ -329,6 +342,7 @@ elif args.mode == "inequality_evaluate4":
         block_size,
         chars_symbolic,
         open(args.evaluate_corpus_path, encoding="utf-8").read(),
+        use_extended_vocab=args.extended_vocab
     )
 
     # Prepare to evaluate
@@ -427,6 +441,7 @@ elif args.mode == "debug_beam":
         block_size,
         chars_symbolic,
         open(args.evaluate_corpus_path, encoding="utf-8").read(),
+        use_extended_vocab=args.extended_vocab
     )
     # correct = 0
 
@@ -541,6 +556,7 @@ elif args.mode == "debug_multisampling":
         block_size,
         chars_symbolic,
         open(args.evaluate_corpus_path, encoding="utf-8").read(),
+        use_extended_vocab=args.extended_vocab
     )
 
     # Set up statistics tracking

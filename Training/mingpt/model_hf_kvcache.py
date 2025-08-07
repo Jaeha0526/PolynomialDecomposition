@@ -156,6 +156,9 @@ class GPT_hf_KVCache(GPTWithKVCache):
                     new_cache = output.past_key_values
                 
                 # Take last position logits and apply temperature
+                if logits.size(1) == 0:
+                    print(f"Warning: Empty logits tensor at step {step}, skipping beam")
+                    continue
                 logits = logits[:, -1, :] / temperature
                 probs = F.softmax(logits, dim=-1)
                 
@@ -269,6 +272,77 @@ class GPT_hf_KVCache(GPTWithKVCache):
                 top_k=top_k
             )
     
+    @torch.no_grad()
+    def generate_with_cache(self, idx, max_new_tokens, temperature=1.0, do_sample=False, top_k=None):
+        """
+        Override parent's generate_with_cache to handle HF-style forward output.
+        Supports both single sequence and batch generation.
+        """
+        from .model import top_k_logits
+        
+        self.eval()
+        batch_size = idx.size(0)
+        
+        # For batch generation, we need separate caches for each sequence
+        if batch_size > 1:
+            # Initialize list to store cache for each sequence in the batch
+            past_key_values_list = [None] * batch_size
+            
+            # Generate for each sequence independently
+            results = []
+            for i in range(batch_size):
+                single_idx = idx[i:i+1]  # Keep batch dimension
+                single_result = self.generate_with_cache(
+                    single_idx, 
+                    max_new_tokens, 
+                    temperature, 
+                    do_sample, 
+                    top_k
+                )
+                results.append(single_result)
+            
+            # Stack results back into batch
+            return torch.cat(results, dim=0)
+        
+        # Single sequence generation with KV-cache
+        past_key_values = None
+        
+        for _ in range(max_new_tokens):
+            # Get input for this iteration
+            if past_key_values is None:
+                # First iteration: process all tokens
+                idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
+                output = self.forward(idx_cond, use_cache=True)
+                logits = output.logits
+                past_key_values = output.past_key_values
+                # Get logits for last position
+                logits = logits[:, -1, :] / temperature
+            else:
+                # Subsequent iterations: only process the new token
+                idx_cond = idx[:, -1:]  # Just the last token
+                output = self.forward(idx_cond, past_key_values=past_key_values, use_cache=True)
+                logits = output.logits
+                past_key_values = output.past_key_values
+                logits = logits[:, -1, :] / temperature
+            
+            # Optionally crop the logits to only the top k options
+            if top_k is not None:
+                logits = top_k_logits(logits, top_k)
+            
+            # Apply softmax to convert logits to probabilities
+            probs = F.softmax(logits, dim=-1)
+            
+            # Sample or take the most likely token
+            if do_sample:
+                idx_next = torch.multinomial(probs, num_samples=1)
+            else:
+                _, idx_next = torch.topk(probs, k=1, dim=-1)
+            
+            # Append to sequence
+            idx = torch.cat((idx, idx_next), dim=1)
+        
+        return idx
+
     def prepare_inputs_for_generation(self, input_ids, past_key_values=None, **kwargs):
         """
         Prepare inputs for generation step, handling KV-cache.

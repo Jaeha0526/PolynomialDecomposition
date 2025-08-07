@@ -243,7 +243,18 @@ def LLM_BeamSearch_check(gpt, input_str, tokentype, device, args):
             print(f"[DEBUG] pred: {pred}")
             # Check if this is single variable (no '&' in prediction) or multi-variable
             if ' & ' in pred:
-                result = is_valid_expression_sympy(input_str, pred)
+                # Count the number of & to determine if it's multi-variable or single-variable with outer
+                num_ampersands = pred.count(' & ')
+                if num_ampersands >= 2:
+                    # Multi-variable case: outer & inner0 & inner1 & ... 
+                    # (2 or more & means at least 3 parts: outer + 2+ inners)
+                    result = is_valid_expression_sympy_multi(input_str, pred)
+                elif num_ampersands == 1:
+                    # Single variable with outer polynomial: outer & inner
+                    result = is_valid_expression_sympy(input_str, pred)
+                else:
+                    print(f"[DEBUG] Unexpected number of & delimiters: {num_ampersands}")
+                    result = False
             else:
                 # Single variable polynomial - use the appropriate validator
                 result = is_valid_expression_sympy_single(input_str, pred)
@@ -407,32 +418,43 @@ def is_valid_expression_sympy_multi(input_str: str, pred_str: str) -> bool:
     Validates the predicted expression against the input expression using SymPy.
     Parses prefix notation, performs substitution based on '&' delimiter,
     and checks for mathematical equivalence.
+    Dynamically handles any number of variables.
     """
     try:
         # 1. Parse pred_str with &
-        print(input_str)
-        print(pred_str)
+        print(f"[Multi-var validation] Input: {input_str[:100]}...")
+        print(f"[Multi-var validation] Pred: {pred_str[:100]}...")
         pred_parts_str = pred_str.split(' & ')
-        if len(pred_parts_str) != 4:
-            print(f"[SymPy Valid] Failed: Expected 4 parts in pred_str delimited by ' & ', got {len(pred_parts_str)}")
+        num_parts = len(pred_parts_str)
+        
+        if num_parts < 2:
+            print(f"[SymPy Valid] Failed: Expected at least 2 parts (outer & inner(s)), got {num_parts}")
             return False
 
         # 2. Convert prediction parts to SymPy expressions
-        tokens_base = [t for t in pred_parts_str[0].split(' ') if t] # Tokenize and remove empty strings
-        tokens_sub1 = [t for t in pred_parts_str[1].split(' ') if t]
-        tokens_sub2 = [t for t in pred_parts_str[2].split(' ') if t]
-        tokens_sub3 = [t for t in pred_parts_str[3].split(' ') if t]
+        # First part is the outer polynomial
+        tokens_outer = [t for t in pred_parts_str[0].split(' ') if t]
+        outer_poly = parse_prefix_to_sympy(tokens_outer)
+        
+        # Remaining parts are inner polynomials
+        inner_polys = []
+        for i in range(1, num_parts):
+            tokens_inner = [t for t in pred_parts_str[i].split(' ') if t]
+            inner_poly = parse_prefix_to_sympy(tokens_inner)
+            inner_polys.append(inner_poly)
+        
+        num_inner = len(inner_polys)
+        print(f"[Multi-var validation] Found {num_inner} inner polynomials")
 
-        base_poly = parse_prefix_to_sympy(tokens_base)
-        sub_poly1 = parse_prefix_to_sympy(tokens_sub1)
-        sub_poly2 = parse_prefix_to_sympy(tokens_sub2)
-        sub_poly3 = parse_prefix_to_sympy(tokens_sub3)
-
-        # 3. Substitute into the base polynomial
-        b0, b1, b2 = sympy.symbols('b0 b1 b2')
-        # Use xreplace for potentially faster/more robust substitution than subs
-        # final_poly = base_poly.subs([(b0, sub_poly1), (b1, sub_poly2), (b2, sub_poly3)])
-        final_poly = base_poly.xreplace({b0: sub_poly1, b1: sub_poly2, b2: sub_poly3})
+        # 3. Dynamically create b variables and substitute
+        # Create b0, b1, b2, ... based on number of inner polynomials
+        b_vars = [sympy.symbols(f'b{i}') for i in range(num_inner)]
+        
+        # Create substitution dictionary
+        substitutions = {b_vars[i]: inner_polys[i] for i in range(num_inner)}
+        
+        # Perform substitution
+        final_poly = outer_poly.xreplace(substitutions)
 
         # 4. Convert input_str to SymPy expression
         tokens_target = [t for t in input_str.split(' ') if t]
@@ -752,7 +774,17 @@ def LLM_MultiSampling_check(model, input_str, tokentype, device, args):
                 if args.sympy :
                     # Check if this is single variable (no '&' in prediction) or multi-variable
                     if ' & ' in pred:
-                        correct = is_valid_expression_sympy(input_str, pred)
+                        # Count the number of & to determine if it's multi-variable or single-variable with outer
+                        num_ampersands = pred.count(' & ')
+                        if num_ampersands >= 2:
+                            # Multi-variable case: outer & inner0 & inner1 & ... 
+                            correct = is_valid_expression_sympy_multi(input_str, pred)
+                        elif num_ampersands == 1:
+                            # Single variable with outer polynomial: outer & inner
+                            correct = is_valid_expression_sympy(input_str, pred)
+                        else:
+                            print(f"[DEBUG] Unexpected number of & delimiters: {num_ampersands}")
+                            correct = False
                     else:
                         # Single variable polynomial - use the appropriate validator
                         correct = is_valid_expression_sympy_single(input_str, pred)

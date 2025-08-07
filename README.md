@@ -25,13 +25,15 @@ Our implementation is based on [Andrej Karpathy's minGPT](https://github.com/kar
 - Integrated beam search with direct Mathematica evaluation
 - Flash Attention support for 2-3x faster training (automatically enabled)
 - **KV-Cache optimization for 1.4-5x faster inference** (automatically enabled for evaluation modes)
-- BGRPO training compatible with KV-Cache optimization
+- **Combined Flash Attention + KV-Cache: 3x overall speedup**
+- BGRPO training fully compatible with both optimizations
 
 ## Getting Started
 
 ### 1. Setup
 ```bash
 bash setup.sh
+# Or use setup_with_uv.sh for faster installation with uv package manager
 ```
 
 ### 2. Generating Datasets
@@ -134,6 +136,81 @@ python Training/mingpt/run.py debug_beam \
     --outputs_path data_storage/predictions/single_variable/beam_3_3.txt
 ```
 
+#### Multi-Variable Polynomial Decomposition
+
+For multi-variable polynomial decomposition (Paper: $\mathcal{D}_3$), we extend the problem to multiple variables where each variable gets its own inner polynomial:
+
+**Data Generation:**
+```python
+from Data_Generation.Using_Sympy.using_sympy import generate_multivariate_datasets_parallel
+
+# Generate multi-variable datasets
+generate_multivariate_datasets_parallel(
+    file_directory='data_storage/dataset/multi_variable',
+    num_inner_vars=3,      # Number of inner variables (a0, a1, a2)
+    num_outer_vars=3,      # Number of outer variables (b0, b1, b2)
+    max_degree_inner=2,    # Max degree for inner polynomials
+    max_degree_outer=2,    # Max degree for outer polynomial
+    num_train=300000,      # Training samples
+    num_test=3000,         # Test samples
+    num_valid=128,         # Validation samples
+    num_cpus=None          # Auto-detect optimal CPU usage
+)
+```
+
+**Training with Extended Vocabulary:**
+```bash
+python Training/mingpt/run.py inequality_finetune \
+    --extended_vocab \
+    --block_size 800 \
+    --max_number_token 101 \
+    --n_layer 6 \
+    --n_head 8 \
+    --n_embd 512 \
+    --batch_size 128 \
+    --finetune_corpus_path data_storage/dataset/multi_variable/training_dataset.txt \
+    --valid_corpus_path data_storage/dataset/multi_variable/validation_dataset.txt \
+    --writing_params_path data_storage/model/multi_variable_model.pt
+```
+
+**Evaluation:**
+```bash
+# Greedy search with extended vocabulary
+python Training/mingpt/run.py inequality_evaluate4 \
+    --extended_vocab \
+    --block_size 800 \
+    --max_output_length 400 \
+    --max_number_token 101 \
+    --n_layer 6 \
+    --n_head 8 \
+    --n_embd 512 \
+    --sympy 1 \
+    --reading_params_path data_storage/model/multi_variable_model.pt \
+    --evaluate_corpus_path data_storage/dataset/multi_variable/test_dataset.txt \
+    --outputs_path data_storage/predictions/multi_variable/greedy.txt
+
+# Beam search
+python Training/mingpt/run.py debug_beam \
+    --extended_vocab \
+    --block_size 800 \
+    --max_output_length 400 \
+    --max_number_token 101 \
+    --beam_width 10 \
+    --n_layer 6 \
+    --n_head 8 \
+    --n_embd 512 \
+    --sympy 1 \
+    --reading_params_path data_storage/model/multi_variable_model.pt \
+    --evaluate_corpus_path data_storage/dataset/multi_variable/test_dataset.txt \
+    --outputs_path data_storage/predictions/multi_variable/beam.txt
+```
+
+**Key Differences from Single-Variable:**
+- **Extended Vocabulary**: Includes tokens for variables a0-a18, b0-b18, n1-n18
+- **Larger Block Size**: 800 tokens to accommodate longer multi-variable expressions
+- **Dataset Format**: `expanded ? outer & inner0 & inner1 & inner2` (uses '?' separator)
+- **Number Range**: Supports 0-100 with `--max_number_token 101`
+
 #### General Evaluation Notes
 Beam search results can be read directly from the output text files. For greedy search inference, the evaluation code only checks for exact matches with the test dataset. Since problems may have multiple valid answers, you can use Mathematica to verify the correctness of model-generated answers as demonstrated in `MMA_package/example.nb`.
 
@@ -146,6 +223,35 @@ cd Training/BGRPO
 bash run_single_variable_model.sh
 ```
 BGRPO training supports KV-Cache optimization for faster beam search during reinforcement learning.
+
+## Performance Optimizations
+
+### KV-Cache (Key-Value Cache)
+Our implementation includes KV-cache optimization that significantly speeds up autoregressive generation:
+
+**Benefits:**
+- **3x overall speedup** when combined with Flash Attention
+- **Particularly effective for beam search** - essential for BGRPO training
+- **Automatic for evaluation** - enabled by default in `inequality_evaluate4` and `debug_beam` modes
+- **Easy to enable for training** - just add `use_kvcache=True` when loading models
+
+**To enable KV-cache in your custom scripts:**
+```python
+from mingpt.model_loader import load_model_and_tokenizer
+
+model, tokenizer = load_model_and_tokenizer(
+    config_path=config_path,
+    model_dir_path=model_dir_path,
+    device=device,
+    use_kvcache=True  # Enable KV-cache
+)
+```
+
+**Technical Details:**
+- Caches key-value projections from previous tokens
+- Eliminates redundant computation during generation
+- Memory overhead: ~5MB for 200 tokens
+- See `Training/BGRPO/KV_Cache_Guide.md` for comprehensive documentation
 
 
 ## Interactive Workflow

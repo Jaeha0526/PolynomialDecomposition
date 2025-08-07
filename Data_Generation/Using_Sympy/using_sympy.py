@@ -72,28 +72,78 @@ def polynomial_to_prefix_tokens(poly, variable):
     
     # Convert each term to its token representation
     def term_to_tokens(term):
-        coeff = term.as_coeff_exponent(variable)[0]
-        power = get_degree(term)
+        # Handle multi-variable terms
+        if term.is_number:
+            # Pure constant term
+            return tokenize_number(int(term))
         
-        if power == 0:
-            # Constant term
-            return tokenize_number(int(coeff))
-        elif power == 1:
-            # Linear term
-            if coeff == 1:
-                return f"* P 1 {variable.name}"
-            elif coeff == -1:
-                return f"* N 1 {variable.name}"
-            else:
-                return f"* {tokenize_number(int(coeff))} {variable.name}"
+        # Get the coefficient and the rest of the term
+        if hasattr(term, 'as_coeff_Mul'):
+            coeff, rest = term.as_coeff_Mul()
         else:
-            # Higher power term
-            if coeff == 1:
-                return f"* P 1 ^ {variable.name} {tokenize_number(power)}"
-            elif coeff == -1:
-                return f"* N 1 ^ {variable.name} {tokenize_number(power)}"
-            else:
-                return f"* {tokenize_number(int(coeff))} ^ {variable.name} {tokenize_number(power)}"
+            coeff = 1
+            rest = term
+            
+        # If coeff is not a number, it means the whole term is variables/powers
+        if not coeff.is_number:
+            coeff = 1
+            rest = term
+        
+        # Check if it's a single variable term with the primary variable
+        if variable in term.free_symbols:
+            power = sympy.degree(term, variable)
+            # Extract coefficient for this specific variable
+            if power == 0:
+                # No occurrence of primary variable, might have other variables
+                # Treat as a multi-variable term
+                pass
+            elif power == 1 and term == coeff * variable:
+                # Simple linear term in primary variable only
+                if coeff == 1:
+                    return f"{variable.name}"
+                elif coeff == -1:
+                    return f"* N 1 {variable.name}"
+                else:
+                    return f"* {tokenize_number(int(coeff))} {variable.name}"
+            elif term == coeff * variable**power:
+                # Simple power term in primary variable only
+                if coeff == 1:
+                    return f"^ {variable.name} {tokenize_number(power)}"
+                elif coeff == -1:
+                    return f"* N 1 ^ {variable.name} {tokenize_number(power)}"
+                else:
+                    return f"* {tokenize_number(int(coeff))} ^ {variable.name} {tokenize_number(power)}"
+        
+        # For multi-variable terms, build multiplication tree
+        # First get all factors
+        factors = []
+        
+        # Add coefficient if not 1
+        if coeff != 1 and coeff != -1:
+            factors.append(tokenize_number(int(abs(coeff))))
+        elif coeff == -1:
+            factors.append("N 1")
+        elif coeff == 1 and term.is_number:
+            factors.append("P 1")
+            
+        # Get all variable factors
+        for var in sorted(term.free_symbols, key=lambda x: str(x)):
+            power = sympy.degree(term, var)
+            if power == 1:
+                factors.append(var.name)
+            elif power > 1:
+                factors.append(f"^ {var.name} {tokenize_number(power)}")
+        
+        # Build multiplication tree (right-associative)
+        if len(factors) == 0:
+            return "P 1"  # Shouldn't happen but safety
+        elif len(factors) == 1:
+            return factors[0]
+        else:
+            result = factors[-1]
+            for i in range(len(factors) - 2, -1, -1):
+                result = f"* {factors[i]} {result}"
+            return result
     
     # Build prefix notation tree for addition
     if len(terms) == 1:
@@ -216,6 +266,341 @@ def generate_dataset_line(degree1=None, degree2=None, debug=False, inner_only=Fa
       print(f"Result: {line}")
 
     return line, (poly1, poly2, expanded_result)
+
+
+# ============================================================================
+# MULTI-VARIABLE POLYNOMIAL GENERATION FUNCTIONS
+# ============================================================================
+
+def generate_random_multivariate_polynomial(variables, max_degree, min_coeff=-20, max_coeff=20):
+    """
+    Generate a random multivariate polynomial with given variables and maximum degree.
+    
+    Args:
+        variables: List of sympy symbols [b0, b1, b2, ...]
+        max_degree: Maximum total degree of the polynomial
+        min_coeff: Minimum coefficient value
+        max_coeff: Maximum coefficient value
+    
+    Returns:
+        A sympy polynomial expression
+    """
+    import itertools
+    
+    poly = 0
+    num_vars = len(variables)
+    
+    # Generate all possible degree combinations up to max_degree
+    # For example, with 2 variables and max_degree=2: (0,0), (1,0), (0,1), (2,0), (1,1), (0,2)
+    degree_combinations = []
+    for total_deg in range(max_degree + 1):
+        # Generate all ways to distribute total_deg among num_vars variables
+        for combo in itertools.combinations_with_replacement(range(num_vars), total_deg):
+            degrees = [0] * num_vars
+            for var_idx in combo:
+                degrees[var_idx] += 1
+            degree_combinations.append(tuple(degrees))
+    
+    # Remove duplicates and sort
+    degree_combinations = list(set(degree_combinations))
+    
+    # Ensure we have at least one term with max_degree
+    max_degree_terms = [combo for combo in degree_combinations if sum(combo) == max_degree]
+    
+    # Add at least one term with maximum degree (non-zero coefficient)
+    if max_degree_terms:
+        max_term = random.choice(max_degree_terms)
+        coeff = 0
+        while coeff == 0:
+            coeff = random.randint(min_coeff, max_coeff)
+        
+        term = coeff
+        for var, deg in zip(variables, max_term):
+            if deg > 0:
+                term *= var ** deg
+        poly += term
+        degree_combinations.remove(max_term)
+    
+    # Randomly add other terms
+    num_terms = random.randint(1, min(len(degree_combinations), 10))  # Limit to 10 additional terms
+    selected_terms = random.sample(degree_combinations, min(num_terms, len(degree_combinations)))
+    
+    for degrees in selected_terms:
+        # Random coefficient (can be zero)
+        coeff = random.randint(min_coeff, max_coeff)
+        if coeff != 0:
+            term = coeff
+            for var, deg in zip(variables, degrees):
+                if deg > 0:
+                    term *= var ** deg
+            poly += term
+    
+    return poly
+
+
+def generate_multivariate_dataset_line(num_inner_vars=3, num_outer_vars=3, 
+                                      max_degree_inner=2, max_degree_outer=2, 
+                                      debug=False):
+    """
+    Generate one line of multivariate polynomial decomposition dataset.
+    
+    Args:
+        num_inner_vars: Number of inner variables (a0, a1, a2, ...)
+        num_outer_vars: Number of outer variables (b0, b1, b2, ...)
+        max_degree_inner: Maximum degree for each inner polynomial
+        max_degree_outer: Maximum degree for outer polynomial
+        debug: Whether to print debug information
+    
+    Returns:
+        Tuple of (formatted_line, (outer_poly, inner_polys, expanded_result))
+    """
+    # Create inner variable symbols
+    inner_vars = [sympy.Symbol(f'a{i}') for i in range(num_inner_vars)]
+    
+    # Create outer variable symbols
+    outer_vars = [sympy.Symbol(f'b{i}') for i in range(num_outer_vars)]
+    
+    # Generate outer polynomial with random degree between 1 and max_degree_outer
+    outer_degree = random.randint(1, max_degree_outer)
+    outer_poly = generate_random_multivariate_polynomial(outer_vars, outer_degree)
+    
+    if debug:
+        print(f"Outer polynomial (degree {outer_degree}): {outer_poly}")
+    
+    # Generate inner polynomials, each with random degree between 1 and max_degree_inner
+    inner_polys = []
+    for i, var in enumerate(inner_vars):
+        inner_degree = random.randint(1, max_degree_inner)
+        inner_poly = generate_random_polynomial(var, inner_degree)
+        inner_polys.append(inner_poly)
+        if debug:
+            print(f"Inner polynomial {i} (degree {inner_degree}): {inner_poly}")
+    
+    # Perform substitution: substitute each inner polynomial into the outer polynomial
+    substituted = outer_poly
+    for outer_var, inner_poly in zip(outer_vars, inner_polys[:num_outer_vars]):
+        substituted = substituted.subs(outer_var, inner_poly)
+    
+    # Expand the result
+    expanded_result = sympy.expand(substituted)
+    
+    if debug:
+        print(f"Substituted: {substituted}")
+        print(f"Expanded: {expanded_result}")
+    
+    # Convert to tokenized prefix form
+    # For the expanded result, we need to handle all inner variables
+    # Pass the first variable as primary, but the function will detect all variables
+    result_tokens = polynomial_to_prefix_tokens(expanded_result, inner_vars[0] if inner_vars else sympy.Symbol('a0'))
+    
+    # Tokenize outer polynomial - use first variable as primary
+    outer_tokens = polynomial_to_prefix_tokens(outer_poly, outer_vars[0] if outer_vars else sympy.Symbol('b0'))
+    
+    # Tokenize each inner polynomial
+    inner_tokens_list = []
+    for inner_poly, inner_var in zip(inner_polys, inner_vars):
+        inner_tokens = polynomial_to_prefix_tokens(inner_poly, inner_var)
+        inner_tokens_list.append(inner_tokens)
+    
+    # Format the line with ? separator and & between polynomials
+    # Format: expanded ? outer & inner0 & inner1 & inner2 ...
+    inner_tokens_str = " & ".join(inner_tokens_list)
+    line = f"{result_tokens} ? {outer_tokens} & {inner_tokens_str}"
+    
+    if debug:
+        print(f"Result: {line}")
+    
+    return line, (outer_poly, inner_polys, expanded_result)
+
+
+def generate_multivariate_batch_worker(args):
+    """Worker function for parallel multivariate batch generation."""
+    (num_inner_vars, num_outer_vars, max_degree_inner, max_degree_outer, 
+     batch_size, worker_id, show_progress) = args
+    
+    expressions = []
+    local_seen = set()
+    attempts = 0
+    max_attempts = batch_size * 10
+    
+    # Set different random seed for each worker to avoid duplicates
+    random.seed(worker_id * 1000 + random.randint(1, 999))
+    
+    progress_interval = max(100, batch_size // 10)  # Show progress every 10% or 100 samples
+    
+    while len(expressions) < batch_size and attempts < max_attempts:
+        try:
+            line, (outer_poly, inner_polys, expanded) = generate_multivariate_dataset_line(
+                num_inner_vars=num_inner_vars,
+                num_outer_vars=num_outer_vars,
+                max_degree_inner=max_degree_inner,
+                max_degree_outer=max_degree_outer,
+                debug=False
+            )
+            
+            # Create unique identifier from the polynomials
+            expr_id = (str(outer_poly), tuple(str(p) for p in inner_polys))
+            
+            if expr_id not in local_seen:
+                local_seen.add(expr_id)
+                expressions.append((line, expr_id))
+                
+                # Show progress for this worker
+                if show_progress and len(expressions) % progress_interval == 0:
+                    print(f"    Worker {worker_id}: {len(expressions)}/{batch_size} samples")
+            
+            attempts += 1
+            
+        except Exception as e:
+            attempts += 1
+            continue
+    
+    return expressions, local_seen, worker_id
+
+
+def generate_multivariate_datasets_parallel(file_directory="data_storage/dataset/multivariate",
+                                           num_inner_vars=3, num_outer_vars=3,
+                                           max_degree_inner=2, max_degree_outer=2,
+                                           num_train=300000, num_test=3000, num_valid=128,
+                                           num_cpus=None):
+    """
+    Generate multivariate polynomial decomposition datasets with parallel processing and deduplication.
+    
+    Args:
+        file_directory: Directory to save the datasets
+        num_inner_vars: Number of inner variables
+        num_outer_vars: Number of outer variables  
+        max_degree_inner: Maximum degree for inner polynomials
+        max_degree_outer: Maximum degree for outer polynomial
+        num_train: Number of training samples (default 300,000)
+        num_test: Number of test samples (default 3,000)
+        num_valid: Number of validation samples (default 128)
+        num_cpus: Number of CPUs to use for parallel generation
+    """
+    import time
+    from collections import defaultdict
+    
+    # Set multiprocessing start method for better Jupyter compatibility
+    try:
+        mp.set_start_method('spawn', force=True)
+    except RuntimeError:
+        pass  # Already set
+    
+    if num_cpus is None:
+        # Auto-detect optimal number of workers
+        total_cpus = os.cpu_count()
+        if total_cpus >= 128:
+            num_workers = 128  # Cap at 128 for very large systems
+        elif total_cpus >= 64:
+            num_workers = min(64, total_cpus // 2)  # Use half for large systems
+        else:
+            num_workers = max(1, total_cpus - 1)  # Leave 1 core for system
+    else:
+        num_workers = max(1, min(num_cpus, os.cpu_count()))  # Ensure valid range
+    
+    print(f"🚀 Starting multivariate dataset generation...")
+    print(f"📊 Configuration:")
+    print(f"   Inner variables: {num_inner_vars} (a0...a{num_inner_vars-1})")
+    print(f"   Outer variables: {num_outer_vars} (b0...b{num_outer_vars-1})")
+    print(f"   Max degree (inner): {max_degree_inner}")
+    print(f"   Max degree (outer): {max_degree_outer}")
+    print(f"   Dataset sizes: train={num_train:,}, test={num_test:,}, valid={num_valid}")
+    print(f"💻 System has {os.cpu_count()} total CPU threads, using {num_workers} workers")
+    print(f"🔧 Multiprocessing method: {mp.get_start_method()}")
+    
+    # Create output directory if it doesn't exist
+    os.makedirs(file_directory, exist_ok=True)
+    
+    # Calculate total needed with 3% overhead for deduplication
+    total_needed = num_train + num_test + num_valid
+    generation_target = int(total_needed * 1.03)
+    
+    print(f"\n📝 Generating {generation_target:,} samples (3% overhead for deduplication)...")
+    
+    start_time = time.time()
+    
+    # Prepare worker arguments
+    samples_per_worker = generation_target // num_workers + 1
+    worker_args = []
+    for worker_id in range(num_workers):
+        # Calculate batch size for this worker
+        if worker_id < num_workers - 1:
+            batch_size = samples_per_worker
+        else:
+            # Last worker handles remaining samples
+            batch_size = generation_target - (samples_per_worker * (num_workers - 1))
+        
+        if batch_size > 0:
+            worker_args.append((
+                num_inner_vars, num_outer_vars, max_degree_inner, max_degree_outer,
+                batch_size, worker_id, True  # show_progress=True
+            ))
+    
+    print(f"🎯 Each worker will generate ~{samples_per_worker:,} samples")
+    print(f"⚡ Starting {len(worker_args)} parallel workers...")
+    
+    # Run parallel generation
+    all_samples = []
+    seen_expressions = set()
+    
+    with mp.Pool(processes=num_workers) as pool:
+        results = pool.map(generate_multivariate_batch_worker, worker_args)
+    
+    # Combine results from all workers
+    print(f"\n📋 Combining results from {len(results)} workers...")
+    for expressions, local_seen, worker_id in results:
+        print(f"  Worker {worker_id}: contributed {len(expressions)} samples")
+        for line, expr_id in expressions:
+            if expr_id not in seen_expressions:
+                seen_expressions.add(expr_id)
+                all_samples.append(line)
+    
+    print(f"\n✅ Generated {len(all_samples):,} unique samples after deduplication")
+    
+    # Shuffle the samples for better distribution
+    random.shuffle(all_samples)
+    
+    # Split into datasets
+    train_data = all_samples[:num_train]
+    test_data = all_samples[num_train:num_train + num_test]
+    valid_data = all_samples[num_train + num_test:num_train + num_test + num_valid]
+    
+    # Write datasets to files
+    print(f"\n💾 Writing datasets to {file_directory}/...")
+    
+    # Write training dataset
+    train_file = os.path.join(file_directory, "training_dataset.txt")
+    with open(train_file, 'w') as f:
+        for i, line in enumerate(train_data):
+            f.write(line)
+            if i < len(train_data) - 1:
+                f.write("\n")
+    print(f"  ✅ Training: {len(train_data):,} samples -> {train_file}")
+    
+    # Write test dataset
+    test_file = os.path.join(file_directory, "test_dataset.txt")
+    with open(test_file, 'w') as f:
+        for i, line in enumerate(test_data):
+            f.write(line)
+            if i < len(test_data) - 1:
+                f.write("\n")
+    print(f"  ✅ Test: {len(test_data):,} samples -> {test_file}")
+    
+    # Write validation dataset
+    valid_file = os.path.join(file_directory, "validation_dataset.txt")
+    with open(valid_file, 'w') as f:
+        for i, line in enumerate(valid_data):
+            f.write(line)
+            if i < len(valid_data) - 1:
+                f.write("\n")
+    print(f"  ✅ Validation: {len(valid_data):,} samples -> {valid_file}")
+    
+    elapsed_time = time.time() - start_time
+    print(f"\n🎉 Dataset generation completed in {elapsed_time:.1f} seconds!")
+    print(f"📊 Final statistics:")
+    print(f"   Total unique samples: {len(all_samples):,}")
+    print(f"   Deduplication rate: {(1 - len(all_samples)/generation_target)*100:.1f}%")
+    print(f"   Generation rate: {len(all_samples)/elapsed_time:.0f} samples/sec")
 
 
 # Generate 1M training dataset and 9 test datasets in the file_directory
