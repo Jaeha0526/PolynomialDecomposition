@@ -50,6 +50,10 @@ data_storage/model/BGRPO
 
 # Large files
 data_storage/dataset/single_variable/training_dataset.txt
+data_storage/dataset/multi_variable/training_dataset.txt
+data_storage/model/multi_variable/*.pt
+data_storage/outputs/_BGRPO/checkpoint-*/optimizer.pt
+data_storage/outputs/_BGRPO/checkpoint-*/model.safetensors
 
 # IDE files
 .vscode/
