@@ -30,6 +30,7 @@ class TrainerConfig:
     # checkpoint settings
     ckpt_path = None
     num_workers = 0 # for DataLoader
+    validation_interval = 50 # validate every N iterations
     writer = None
     
     def __init__(self, **kwargs):
@@ -182,8 +183,8 @@ class Trainer:
                 model.train(is_train)
                 data = self.train_dataset
                 data_valid = self.valid_dataset
-                loader = DataLoader(data, batch_size=config.batch_size, num_workers=config.num_workers, shuffle=config.shuffle)
-                loader_valid = DataLoader(data_valid, batch_size=128)
+                loader = DataLoader(data, batch_size=config.batch_size, num_workers=4, pin_memory=True, persistent_workers=True, shuffle=config.shuffle)
+                loader_valid = DataLoader(data_valid, batch_size=128, num_workers=4, pin_memory=True, persistent_workers=True)
                 
                 # Keep track of loaders for cleanup
                 self.data_loaders = [loader, loader_valid]
@@ -215,23 +216,28 @@ class Trainer:
                     torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_norm_clip)
                     self.optimizer.step()
 
-                    # test on valid dataset
-                    model.eval()
-                    with torch.no_grad():
-                        for x_valid, y_valid in loader_valid:
-                            x_valid = x_valid.to(self.device)
-                            y_valid = y_valid.to(self.device)
+                    # test on valid dataset every N iterations
+                    if it % config.validation_interval == 0:
+                        model.eval()
+                        with torch.no_grad():
+                            for x_valid, y_valid in loader_valid:
+                                x_valid = x_valid.to(self.device)
+                                y_valid = y_valid.to(self.device)
 
-                            logits_valid, loss_valid = model(x_valid,y_valid)
-                            loss_valid = loss_valid.mean()
-                            losses_valid.append(loss_valid.item())
-                    model.train()
-                    
-                    # save best model based on valid set loss
-                    if loss_valid.item() < self.valid_loss_best :
-                        self.save_checkpoint('_best.pt')
-                        self.best_iter = step
-                        self.valid_loss_best = loss_valid.item()
+                                logits_valid, loss_valid = model(x_valid,y_valid)
+                                loss_valid = loss_valid.mean()
+                                losses_valid.append(loss_valid.item())
+                        model.train()
+                        
+                        # save best model based on valid set loss
+                        if loss_valid.item() < self.valid_loss_best :
+                            self.save_checkpoint('_best.pt')
+                            self.best_iter = step
+                            self.valid_loss_best = loss_valid.item()
+                    else:
+                        # Use the last validation loss for display
+                        if losses_valid:
+                            loss_valid = torch.tensor(losses_valid[-1])
 
                     # decay the learning rate based on our progress
                     if config.lr_decay:
@@ -250,8 +256,12 @@ class Trainer:
                         lr = config.learning_rate
 
                     # report progress
+                    if losses_valid:
+                        valid_loss_str = f"{losses_valid[-1]:.11f}"
+                    else:
+                        valid_loss_str = "pending"
                     pbar.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.11f}"\
-                     f" valid_loss {loss_valid.item():.11f}."\
+                     f" valid_loss {valid_loss_str}."\
                      f" best saved at iteration {self.best_iter}"\
                      f" lr {lr:e}")
                     

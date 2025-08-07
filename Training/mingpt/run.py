@@ -141,6 +141,18 @@ else:
     gpt = model.GPT(model_cfg)
     gpt.to(device)
     # Convert to Flash Attention for faster training
+    # Apply torch.compile for additional optimization
+    try:
+        import torch
+        if torch.__version__ >= '2.0.0':
+            print('🚀 Compiling model with torch.compile...')
+            gpt = torch.compile(gpt, mode='reduce-overhead')
+            print('✅ Model compiled successfully!')
+        else:
+            print('ℹ️  PyTorch 2.0+ not found, skipping torch.compile')
+    except Exception as e:
+        print(f'⚠️  torch.compile failed: {e}, continuing without compilation')
+    
     gpt = replace_attention_with_flash_attention(gpt)
 
 
