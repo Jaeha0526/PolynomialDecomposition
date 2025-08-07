@@ -115,8 +115,25 @@ def evaluate_substitutions(filepath, predicted_substitutions, sympy=False):
     total = len(predicted_substitutions)
     
     if sympy:
-        correct = len(list(filter(lambda x: is_valid_expression_sympy_single(x[0], x[1]),
-        zip(expanded_forms, predicted_substitutions))))
+        # Determine validation function based on prediction format
+        # Check first prediction to see if it's multi-variable (has multiple '&')
+        if predicted_substitutions and ' & ' in predicted_substitutions[0]:
+            num_ampersands = predicted_substitutions[0].count(' & ')
+            if num_ampersands >= 2:
+                # Multi-variable format: outer & inner0 & inner1 & ...
+                print("[Validation] Using multi-variable validation (detected multiple & separators)")
+                correct = len(list(filter(lambda x: is_valid_expression_sympy_multi(x[0], x[1]),
+                    zip(expanded_forms, predicted_substitutions))))
+            else:
+                # Single variable with outer format: outer & inner
+                print("[Validation] Using single-variable validation with outer polynomial")
+                correct = len(list(filter(lambda x: is_valid_expression_sympy(x[0], x[1]),
+                    zip(expanded_forms, predicted_substitutions))))
+        else:
+            # Single variable inner-only format
+            print("[Validation] Using single-variable validation (inner-only)")
+            correct = len(list(filter(lambda x: is_valid_expression_sympy_single(x[0], x[1]),
+                zip(expanded_forms, predicted_substitutions))))
     else:
         predicted_substitutions = [x.replace(' ','') for x in predicted_substitutions]
         correct = len(list(filter(lambda x: x[0] == x[1],
