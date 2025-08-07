@@ -80,9 +80,10 @@ class Trainer:
                 self.training_active = False
                 
                 # Clean up data loaders
-                for loader in self.data_loaders:
-                    if hasattr(loader, '_shutdown_workers'):
-                        loader._shutdown_workers()
+                if hasattr(self, 'data_loaders') and self.data_loaders:
+                    for loader in self.data_loaders:
+                        if hasattr(loader, '_shutdown_workers'):
+                            loader._shutdown_workers()
                 
                 # Clear optimizer
                 if self.optimizer is not None:
