@@ -29,7 +29,7 @@ class TrainerConfig:
     final_tokens = 260e9 # (at what point we reach 10% of original LR)
     # checkpoint settings
     ckpt_path = None
-    num_workers = 0 # for DataLoader
+    num_workers = 2 # for DataLoader (reduced from 4 to save memory)
     validation_interval = 50 # validate every N iterations
     writer = None
     
@@ -183,8 +183,20 @@ class Trainer:
                 model.train(is_train)
                 data = self.train_dataset
                 data_valid = self.valid_dataset
-                loader = DataLoader(data, batch_size=config.batch_size, num_workers=4, pin_memory=True, persistent_workers=True, shuffle=config.shuffle)
-                loader_valid = DataLoader(data_valid, batch_size=128, num_workers=4, pin_memory=True, persistent_workers=True)
+                # Reduce workers to save memory (0-2 recommended for memory-constrained systems)
+                num_workers = min(2, config.num_workers) if hasattr(config, 'num_workers') else 0
+                # Only use persistent_workers if we have workers
+                persistent = num_workers > 0
+                
+                loader = DataLoader(data, batch_size=config.batch_size, 
+                                  num_workers=num_workers, 
+                                  pin_memory=torch.cuda.is_available(), 
+                                  persistent_workers=persistent, 
+                                  shuffle=config.shuffle)
+                loader_valid = DataLoader(data_valid, batch_size=128, 
+                                        num_workers=num_workers, 
+                                        pin_memory=torch.cuda.is_available(), 
+                                        persistent_workers=persistent)
                 
                 # Keep track of loaders for cleanup
                 self.data_loaders = [loader, loader_valid]
