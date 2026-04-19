@@ -87,13 +87,20 @@ def load_model_and_tokenizer(config_path: str, model_dir_path: str, device: str 
     print(f"  Max Number Token: {max_number_token}")
 
     # --- Define Symbolic Vocab ---
-    # BGRPO currently uses the single-variable (simple) vocab. For multi-var
-    # checkpoints, swap in build_extended_vocab(max_number_token).
+    # Single-variable checkpoints use the simple (31-token) vocab; multi-var
+    # checkpoints (paper D1-b, D2, D3) use the extended (~174-token) vocab.
+    # The config picks which: ``extended_vocab: true`` in the JSON, or leave
+    # unset / false for simple. Inferred as ``True`` when max_number_token > 10,
+    # which keeps legacy single-var configs working.
     try:
-        from .vocab import build_simple_vocab
+        from .vocab import build_extended_vocab, build_simple_vocab
     except ImportError:
-        from vocab import build_simple_vocab
-    chars_symbolic = build_simple_vocab()
+        from vocab import build_extended_vocab, build_simple_vocab
+    extended_vocab = config.get("extended_vocab", max_number_token > 10)
+    if extended_vocab:
+        chars_symbolic = build_extended_vocab(max_number_token)
+    else:
+        chars_symbolic = build_simple_vocab()
 
     # --- Instantiate Tokenizer ---
     tokenizer = SymbolicTokenizer(chars_symbolic)

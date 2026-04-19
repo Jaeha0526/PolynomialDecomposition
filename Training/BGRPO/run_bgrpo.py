@@ -18,10 +18,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
 
 import torch
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+)
 
 # Add project root so ``mingpt`` imports work when run as a script.
 HERE = Path(__file__).resolve().parent
