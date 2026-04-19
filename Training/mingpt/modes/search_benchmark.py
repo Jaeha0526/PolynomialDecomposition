@@ -6,7 +6,7 @@ training corpus. Used to verify train/test overlap is negligible.
 from tqdm import tqdm
 
 
-def run(args, gpt, chars_symbolic, block_size, device):
+def run(args, gpt, chars_symbolic, device):
     assert args.finetune_corpus_path is not None
     assert args.evaluate_corpus_path is not None
 

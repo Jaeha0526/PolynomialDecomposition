@@ -15,7 +15,8 @@ except ImportError:
     import trainer
 
 
-def run(args, gpt, chars_symbolic, block_size, device):
+def run(args, gpt, chars_symbolic, device):
+    block_size = args.block_size
     assert args.writing_params_path is not None, "--writing_params_path is required"
     assert args.finetune_corpus_path is not None, "--finetune_corpus_path is required"
 

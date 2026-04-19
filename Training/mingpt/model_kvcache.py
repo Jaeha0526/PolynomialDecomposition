@@ -140,7 +140,7 @@ class GPTWithKVCache(GPT):
         """
         self.eval()
         past_key_values = None
-        
+
         for _ in range(max_new_tokens):
             # Get input for this iteration
             if past_key_values is None:
@@ -150,6 +150,12 @@ class GPTWithKVCache(GPT):
                 # Get logits for last position
                 logits = logits[:, -1, :] / temperature
             else:
+                # The cache + one new token must fit in block_size. Once we hit
+                # the limit we stop generating — truncating the cache would
+                # corrupt position embeddings and silently change outputs.
+                past_length = past_key_values[0][0].size(2)
+                if past_length >= self.block_size:
+                    break
                 # Subsequent iterations: only process the new token
                 idx_cond = idx[:, -1:]  # Just the last token
                 logits, _, past_key_values = self.forward(idx_cond, past_key_values=past_key_values, use_cache=True)
@@ -210,11 +216,19 @@ class GPTWithKVCache(GPT):
                     logits = initial_logits
                     new_cache = beam['cache']  # Cache is already set from initial pass
                 else:
+                    # Stop if the cache would overflow block_size. Matching
+                    # generate_with_cache's behavior so prompt+generation
+                    # never run past the positional embedding range.
+                    past_length = beam['cache'][0][0].size(2)
+                    if past_length >= self.block_size:
+                        beam['finished'] = True
+                        all_candidates.append(beam)
+                        continue
                     # Get next token predictions using cache
                     last_token = beam['sequence'][:, -1:]
                     logits, _, new_cache = self.forward(
-                        last_token, 
-                        past_key_values=beam['cache'], 
+                        last_token,
+                        past_key_values=beam['cache'],
                         use_cache=True
                     )
                 

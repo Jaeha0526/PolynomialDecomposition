@@ -35,21 +35,21 @@ class SymbolicTokenizer:
         self.stoi = {ch: i for i, ch in enumerate(vocab)}
         self.itos = {i: ch for i, ch in enumerate(vocab)}
 
+        # Special-token attributes. PAD doubles as EOS because training
+        # masks PAD positions in the loss and decoded strings are split
+        # on MASK_CHAR, not EOS. END_INDEX / MASK_INDEX are the names
+        # utils.beam_search / LLM_BeamSearch_check expect.
+        #
+        # BGRPO and TRL's GRPOTrainer read additional HF-style aliases
+        # off the tokenizer (bos_token_id, etc.). Those are intentionally
+        # NOT set here — BGRPO is slated for a redesign that will replace
+        # the TRL coupling entirely; test_08_bgrpo_smoke is expected to
+        # fail until that redesign lands.
         self.PAD_CHAR = PAD_CHAR
         self.MASK_CHAR = MASK_CHAR
-        self.pad_token = PAD_CHAR
-        self.mask_token = MASK_CHAR
         self.pad_token_id = self.stoi[PAD_CHAR]
         self.mask_token_id = self.stoi[MASK_CHAR]
-
-        # PAD doubles as EOS/BOS: training masks PAD positions in the loss,
-        # and decoded strings are split on MASK_CHAR, not EOS.
-        self.eos_token = PAD_CHAR
         self.eos_token_id = self.pad_token_id
-        self.bos_token = PAD_CHAR
-        self.bos_token_id = self.pad_token_id
-
-        # Legacy aliases used by utils.beam_search / LLM_BeamSearch_check.
         self.END_INDEX = self.eos_token_id
         self.MASK_INDEX = self.mask_token_id
 

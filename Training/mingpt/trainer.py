@@ -14,21 +14,16 @@ from pathlib import Path
 
 import torch
 import torch.optim as optim
+import wandb
 from torch.utils.data.dataloader import DataLoader
 from tqdm import tqdm
-
-try:
-    import wandb
-except ImportError:
-    wandb = None
 
 logger = logging.getLogger(__name__)
 
 
 def _wandb_log(payload: dict, step: int) -> None:
-    """Log to wandb if a run is active, otherwise no-op. Lets the trainer
-    stay neutral about whether the caller wired wandb up."""
-    if wandb is not None and getattr(wandb, "run", None) is not None:
+    """Log to wandb if a run is active. No-op if no run has been started."""
+    if wandb.run is not None:
         wandb.log(payload, step=step)
 
 
@@ -154,7 +149,7 @@ class Trainer:
                 _, loss = self.model(x, y)
                 loss = loss.mean()
 
-                self.model.zero_grad()
+                self.optimizer.zero_grad(set_to_none=True)
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), config.grad_norm_clip)
                 self.optimizer.step()

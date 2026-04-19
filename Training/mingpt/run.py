@@ -77,10 +77,6 @@ def build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def _coerce_int_flag_to_bool(args, name: str) -> None:
-    setattr(args, name, bool(getattr(args, name)))
-
-
 def build_model(args, device, vocab_size, block_size):
     """Instantiate the model with attention optimized for this mode."""
     cfg = model.GPTConfig(
@@ -102,8 +98,9 @@ def build_model(args, device, vocab_size, block_size):
 
 def main() -> None:
     args = build_argparser().parse_args()
+    # These flags are spelled as ints on the CLI for legacy compatibility.
     for name in ("lr_decay", "shuffle", "sympy", "test"):
-        _coerce_int_flag_to_bool(args, name)
+        setattr(args, name, bool(getattr(args, name)))
 
     utils.set_seed(148)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -123,7 +120,7 @@ def main() -> None:
     gpt = build_model(args, device, len(chars_symbolic), args.block_size)
 
     handler = DISPATCH[args.mode]
-    handler(args, gpt, chars_symbolic, args.block_size, device)
+    handler(args, gpt, chars_symbolic, device)
 
 
 if __name__ == "__main__":

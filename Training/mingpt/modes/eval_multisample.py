@@ -16,7 +16,8 @@ except ImportError:
     import utils
 
 
-def run(args, gpt, chars_symbolic, block_size, device):
+def run(args, gpt, chars_symbolic, device):
+    block_size = args.block_size
     assert args.outputs_path is not None
     assert args.reading_params_path is not None
     assert args.evaluate_corpus_path is not None

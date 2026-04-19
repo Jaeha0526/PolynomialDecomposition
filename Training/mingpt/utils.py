@@ -114,25 +114,10 @@ def evaluate_substitutions(filepath, predicted_substitutions, sympy=False):
     total = len(predicted_substitutions)
     
     if sympy:
-        # Determine validation function based on prediction format
-        # Check first prediction to see if it's multi-variable (has multiple '&')
-        if predicted_substitutions and ' & ' in predicted_substitutions[0]:
-            num_ampersands = predicted_substitutions[0].count(' & ')
-            if num_ampersands >= 2:
-                # Multi-variable format: outer & inner0 & inner1 & ...
-                print("[Validation] Using multi-variable validation (detected multiple & separators)")
-                correct = len(list(filter(lambda x: is_valid_expression_sympy_multi(x[0], x[1]),
-                    zip(expanded_forms, predicted_substitutions))))
-            else:
-                # Single variable with outer format: outer & inner
-                print("[Validation] Using single-variable validation with outer polynomial")
-                correct = len(list(filter(lambda x: is_valid_expression_sympy(x[0], x[1]),
-                    zip(expanded_forms, predicted_substitutions))))
-        else:
-            # Single variable inner-only format
-            print("[Validation] Using single-variable validation (inner-only)")
-            correct = len(list(filter(lambda x: is_valid_expression_sympy_single(x[0], x[1]),
-                zip(expanded_forms, predicted_substitutions))))
+        correct = sum(
+            1 for expanded, pred in zip(expanded_forms, predicted_substitutions)
+            if validate_prediction_sympy(expanded, pred)
+        )
     else:
         predicted_substitutions = [x.replace(' ','') for x in predicted_substitutions]
         correct = len(list(filter(lambda x: x[0] == x[1],
@@ -251,23 +236,8 @@ def LLM_BeamSearch_check(gpt, input_str, tokentype, device, args):
         pred = re.split(f'{tokentype.MASK_CHAR}|{tokentype.PAD_CHAR}', beam_str)[1]
         pred_hash = hash_string(pred)
         
-        if args.sympy :
-            # Check if this is single variable (no '&' in prediction) or multi-variable
-            if ' & ' in pred:
-                # Count the number of & to determine if it's multi-variable or single-variable with outer
-                num_ampersands = pred.count(' & ')
-                if num_ampersands >= 2:
-                    # Multi-variable case: outer & inner0 & inner1 & ...
-                    # (2 or more & means at least 3 parts: outer + 2+ inners)
-                    result = is_valid_expression_sympy_multi(input_str, pred)
-                elif num_ampersands == 1:
-                    # Single variable with outer polynomial: outer & inner
-                    result = is_valid_expression_sympy(input_str, pred)
-                else:
-                    result = False
-            else:
-                # Single variable polynomial - use the appropriate validator
-                result = is_valid_expression_sympy_single(input_str, pred)
+        if args.sympy:
+            result = validate_prediction_sympy(input_str, pred)
         else:
             result = call_mathematica(input_str, pred, args)
 
@@ -531,6 +501,22 @@ def call_mathematica(input_str, pred, args):
         return None
 
 
+def validate_prediction_sympy(input_str: str, pred: str) -> bool:
+    """Pick the right sympy validator based on the '&' count in ``pred``.
+
+    Decomposition answers come in three forms:
+      * ``inner``                — inner-only (single-variable D1-a style).
+      * ``outer & inner``        — single-variable with outer (one '&').
+      * ``outer & inner0 & ...`` — multi-variable (two+ '&').
+    """
+    n = pred.count(" & ")
+    if n >= 2:
+        return is_valid_expression_sympy_multi(input_str, pred)
+    if n == 1:
+        return is_valid_expression_sympy(input_str, pred)
+    return is_valid_expression_sympy_single(input_str, pred)
+
+
 def hash_string(s):
     return hashlib.sha256(s.encode()).hexdigest()
 
@@ -778,22 +764,8 @@ def LLM_MultiSampling_check(model, input_str, tokentype, device, args):
 
             # Verify with call_mathematica if check_path is provided
             if hasattr(args, 'check_path') and args.check_path:
-                if args.sympy :
-                    # Check if this is single variable (no '&' in prediction) or multi-variable
-                    if ' & ' in pred:
-                        # Count the number of & to determine if it's multi-variable or single-variable with outer
-                        num_ampersands = pred.count(' & ')
-                        if num_ampersands >= 2:
-                            # Multi-variable case: outer & inner0 & inner1 & ... 
-                            correct = is_valid_expression_sympy_multi(input_str, pred)
-                        elif num_ampersands == 1:
-                            # Single variable with outer polynomial: outer & inner
-                            correct = is_valid_expression_sympy(input_str, pred)
-                        else:
-                            correct = False
-                    else:
-                        # Single variable polynomial - use the appropriate validator
-                        correct = is_valid_expression_sympy_single(input_str, pred)
+                if args.sympy:
+                    correct = validate_prediction_sympy(input_str, pred)
                 else:
                     correct = call_mathematica(input_str, pred, args)
                 if correct:

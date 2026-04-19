@@ -1,13 +1,8 @@
 """
-Greedy evaluation modes.
+Greedy evaluation mode (``inequality_evaluate4``).
 
-``run_batched`` (``inequality_evaluate4``): the canonical greedy eval —
-groups test lines by actual tokenized length and runs them in padding-free
-batches. This is what powers D1 / D2 / D3 greedy accuracy numbers.
-
-``run_unbatched`` (``inequality_evaluate``): the legacy one-at-a-time path.
-Kept only because a handful of old shell scripts may still invoke it; no
-paper experiment is tied to this path specifically.
+Groups test lines by actual tokenized length and runs them in padding-free
+batches. Powers D1 / D2 / D3 greedy accuracy numbers.
 """
 
 import os
@@ -18,9 +13,11 @@ from tqdm import tqdm
 
 try:
     from .. import dataset, utils
+    from ..vocab import PAD_CHAR, MASK_CHAR
 except ImportError:
     import dataset
     import utils
+    from vocab import PAD_CHAR, MASK_CHAR
 
 
 # --- helpers for the batched path ---------------------------------------------
@@ -28,9 +25,9 @@ except ImportError:
 
 def _actual_tensor_length(line: str) -> int:
     """Replicate the length computed by the on-the-fly tokenization below."""
-    prompt = line.replace("?", "\u2047").split("\u2047")[0]
+    prompt = line.replace("?", MASK_CHAR).split(MASK_CHAR)[0]
     tokens = [t for t in prompt.split(" ") if t]
-    tokens.append("\u2047")
+    tokens.append(MASK_CHAR)
     return len(tokens)
 
 
@@ -43,7 +40,8 @@ def _group_lines_by_exact_length(lines):
 # --- run_batched: inequality_evaluate4 ----------------------------------------
 
 
-def run_batched(args, gpt, chars_symbolic, block_size, device):
+def run_batched(args, gpt, chars_symbolic, device):
+    block_size = args.block_size
     assert args.outputs_path is not None
     assert args.reading_params_path is not None
     assert args.evaluate_corpus_path is not None
@@ -75,9 +73,9 @@ def run_batched(args, gpt, chars_symbolic, block_size, device):
             x_batch = []
             original_indices = []
             for original_index, line in batch_lines:
-                prompt = line.replace("?", "\u2047").split("\u2047")[0]
+                prompt = line.replace("?", MASK_CHAR).split(MASK_CHAR)[0]
                 tokens = [t for t in prompt.split(" ") if t]
-                tokens.append("\u2047")
+                tokens.append(MASK_CHAR)
                 x_tensor = torch.tensor(
                     [test_dataset.stoi[s] for s in tokens], dtype=torch.long
                 ).to(device)
@@ -90,21 +88,21 @@ def run_batched(args, gpt, chars_symbolic, block_size, device):
             for j, pred in enumerate(batch_preds):
                 completion = "".join([test_dataset.itos[int(k)] + " " for k in pred])
 
-                if "\u2047" in completion:
-                    pred2 = completion.split("\u2047")[1].strip()
-                    if "\u2047" in pred2:
-                        pred2 = pred2.split("\u2047")[0].strip()
-                    if "\u25A1" in pred2:
-                        pred2 = pred2.split("\u25A1")[0].strip()
+                if MASK_CHAR in completion:
+                    pred2 = completion.split(MASK_CHAR)[1].strip()
+                    if MASK_CHAR in pred2:
+                        pred2 = pred2.split(MASK_CHAR)[0].strip()
+                    if PAD_CHAR in pred2:
+                        pred2 = pred2.split(PAD_CHAR)[0].strip()
                     pred_str = pred2.replace(" ", "")
                 else:
                     pred2 = ""
                     pred_str = ""
 
                 predictions_dict[original_indices[j]] = pred2
-                line_here = batch_lines[j][1].replace("?", "\u2047")
+                line_here = batch_lines[j][1].replace("?", MASK_CHAR)
                 true_output_dict[original_indices[j]] = (
-                    line_here.split("\u2047")[1] + " \u2047 " + pred2
+                    line_here.split(MASK_CHAR)[1] + f" {MASK_CHAR} " + pred2
                 )
 
     sorted_indices = sorted(predictions_dict.keys())
@@ -123,45 +121,3 @@ def run_batched(args, gpt, chars_symbolic, block_size, device):
     else:
         print(f"Predictions written to {args.outputs_path}; no targets provided")
 
-
-# --- run_unbatched: inequality_evaluate (legacy) ------------------------------
-
-
-def run_unbatched(args, gpt, chars_symbolic, block_size, device):
-    assert args.outputs_path is not None
-    assert args.reading_params_path is not None
-    assert args.evaluate_corpus_path is not None
-    gpt.load_state_dict(torch.load(args.reading_params_path))
-
-    test_dataset = dataset.SymbolicDataset(
-        block_size,
-        chars_symbolic,
-        open(args.evaluate_corpus_path, encoding="utf-8").read(),
-        use_extended_vocab=args.extended_vocab,
-    )
-
-    predictions = []
-    with open(args.outputs_path, "w", encoding="utf-8") as fout:
-        for line in tqdm(open(args.evaluate_corpus_path, encoding="utf-8")):
-            line_here = line.replace("?", "\u2047")
-            prompt = line_here.split("\u2047")[0]
-            tokens = [t for t in prompt.split(" ") if t]
-            tokens.append("\u2047")
-            x = torch.tensor(
-                [test_dataset.stoi[s] for s in tokens], dtype=torch.long
-            )[None, ...].to(device)
-
-            pred = utils.sample(gpt, x, args.max_output_length, sample=False)[0]
-            completion = "".join([test_dataset.itos[int(i)] + " " for i in pred])
-            pred = completion.replace(" ", "").split("\u2047")[1]
-            pred2 = completion.split("\u2047")[1]
-            predictions.append(pred)
-            true_pred = line_here.split("\u2047")[1].replace(" ", "") + "\u2047" + pred2
-            fout.write(true_pred + "\n")
-
-        total, correct = utils.evaluate_substitutions(args.evaluate_corpus_path, predictions)
-
-    if total > 0:
-        print(f"Correct: {correct} out of {total}: {correct / total * 100}%")
-    else:
-        print(f"Predictions written to {args.outputs_path}; no targets provided")
