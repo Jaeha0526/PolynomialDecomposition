@@ -1,11 +1,22 @@
 .venv
 venv
-.venv_uv/
 wandb
 test/
 .claude/
 test_outputs/
 dev/
+
+# Poetry cache/build artifacts (poetry.lock IS tracked)
+.poetry-cache/
+dist/
+
+# SLURM and ad-hoc logs
+slurm-*.out
+tea_debug.log
+
+# Paper-experiment scratch (excluded for now — kept private while iterating)
+Training/things_on_paper/
+data_storage/things_on_paper/
 
 # Python cache files
 __pycache__/
@@ -65,3 +76,6 @@ data_storage/outputs/_BGRPO/checkpoint-*/model.safetensors
 # OS files
 .DS_Store
 Thumbs.db
+
+dev/
+CLAUDE.md

@@ -14,7 +14,6 @@ import re
 import hashlib
 from typing import List, Tuple, Dict, Optional
 from torch.nn.utils.rnn import pad_sequence
-import random
 import sympy
 import math
 
@@ -242,9 +241,6 @@ def LLM_BeamSearch_check(gpt, input_str, tokentype, device, args):
     correct_beam_rank = -1
     hf = getattr(args, 'hf', False)
     beam_result = beam_search(gpt, x, args.max_output_length, tokentype, beam_width=args.beam_width, temperature=1.0, top_k=None, PaddingToken=None, hf=hf)
-    # print("[DEBUG] beam_result: ", beam_result)
-
-    #beam_result = list(map(lambda x: TokenToString(tokentype, x), beam_result))
 
     #print(f"beam_result : \n")
 
@@ -256,21 +252,18 @@ def LLM_BeamSearch_check(gpt, input_str, tokentype, device, args):
         pred_hash = hash_string(pred)
         
         if args.sympy :
-            print(f"[DEBUG] input_str: {input_str}")
-            print(f"[DEBUG] pred: {pred}")
             # Check if this is single variable (no '&' in prediction) or multi-variable
             if ' & ' in pred:
                 # Count the number of & to determine if it's multi-variable or single-variable with outer
                 num_ampersands = pred.count(' & ')
                 if num_ampersands >= 2:
-                    # Multi-variable case: outer & inner0 & inner1 & ... 
+                    # Multi-variable case: outer & inner0 & inner1 & ...
                     # (2 or more & means at least 3 parts: outer + 2+ inners)
                     result = is_valid_expression_sympy_multi(input_str, pred)
                 elif num_ampersands == 1:
                     # Single variable with outer polynomial: outer & inner
                     result = is_valid_expression_sympy(input_str, pred)
                 else:
-                    print(f"[DEBUG] Unexpected number of & delimiters: {num_ampersands}")
                     result = False
             else:
                 # Single variable polynomial - use the appropriate validator
@@ -505,7 +498,6 @@ def call_mathematica(input_str, pred, args):
     # Combine the script directory path with the check.m filename from args
     # This creates the full absolute path to the check.m file that will be used by Mathematica
     check_m_path = os.path.join(script_dir, args.check_path)
-    # print("[DEBUG] check_m_path: ", check_m_path)
 
     # Prepare the Mathematica input
     mathematica_code = f'<< "{check_m_path}"; MMACheck["{input_str}", "{pred}"]'
@@ -521,8 +513,6 @@ def call_mathematica(input_str, pred, args):
 
     # Send the Mathematica command to MathKernel
     stdout, stderr = process.communicate(mathematica_code)
-    # print("[DEBUG] stdout: ", stdout)
-    # print("[DEBUG] stderr: ", stderr)
 
     # Check if there's any error output from MathKernel
     if stderr:
@@ -800,7 +790,6 @@ def LLM_MultiSampling_check(model, input_str, tokentype, device, args):
                             # Single variable with outer polynomial: outer & inner
                             correct = is_valid_expression_sympy(input_str, pred)
                         else:
-                            print(f"[DEBUG] Unexpected number of & delimiters: {num_ampersands}")
                             correct = False
                     else:
                         # Single variable polynomial - use the appropriate validator

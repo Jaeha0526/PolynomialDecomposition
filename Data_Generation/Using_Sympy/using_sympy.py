@@ -7,8 +7,17 @@ import os
 from functools import partial
 
 # generate single variable polynomial with certain degree and random coefficient
-def generate_random_polynomial(variable, degree, min_coeff=-20, max_coeff=20):
-    """Generate a random polynomial with given degree and coefficient range."""
+def generate_random_polynomial(variable, degree, coeff_range=(-20, 20)):
+    """Generate a random single-variable polynomial with given degree.
+
+    Args:
+        variable: sympy Symbol.
+        degree: polynomial degree (the leading coefficient is guaranteed non-zero).
+        coeff_range: (min, max) inclusive. Paper settings: (-20, 20) for D1/D3,
+            (-5, 5) for D2. Also used with disjoint unions (e.g. D3's C2) by
+            callers filtering after sampling.
+    """
+    min_coeff, max_coeff = coeff_range
     coeffs = []
     # Ensure the highest degree coefficient is non-zero
     while True:
@@ -16,7 +25,7 @@ def generate_random_polynomial(variable, degree, min_coeff=-20, max_coeff=20):
         if coeff != 0:
             coeffs.append(coeff)
             break
-    
+
     # Generate remaining coefficients (can be zero)
     for _ in range(degree):
         coeffs.append(random.randint(min_coeff, max_coeff))
@@ -233,13 +242,26 @@ def parse_prefix_to_sympy(tokens: List[str]) -> sympy.Expr:
     return stack[0]
 
 
-def generate_dataset_line(degree1=None, degree2=None, debug=False, inner_only=False):
-    """Generate one line of the dataset."""
+def generate_dataset_line(
+    degree1=None,
+    degree2=None,
+    coeff_range_outer=(-20, 20),
+    coeff_range_inner=(-20, 20),
+    debug=False,
+    inner_only=False,
+):
+    """Generate one line of the single-variable dataset.
+
+    ``degree1`` is the outer polynomial's degree (in b), ``degree2`` is the
+    inner polynomial's degree (in a). ``coeff_range_outer`` / ``coeff_range_inner``
+    control the coefficient distribution for each. Paper D1-a uses (-20, 20);
+    D3 uses different (inner, outer) ranges for C1 vs C2.
+    """
     a = sympy.Symbol('a')
     b = sympy.Symbol('b')
 
-    poly1 = generate_random_polynomial(b, degree1)
-    poly2 = generate_random_polynomial(a, degree2)
+    poly1 = generate_random_polynomial(b, degree1, coeff_range=coeff_range_outer)
+    poly2 = generate_random_polynomial(a, degree2, coeff_range=coeff_range_inner)
     if debug:
       print(f"Outer polynomial: {poly1}")
       print(f"Inner polynomial: {poly2}")
@@ -272,61 +294,71 @@ def generate_dataset_line(degree1=None, degree2=None, debug=False, inner_only=Fa
 # MULTI-VARIABLE POLYNOMIAL GENERATION FUNCTIONS
 # ============================================================================
 
-def generate_random_multivariate_polynomial(variables, max_degree, min_coeff=-20, max_coeff=20):
+def generate_random_multivariate_polynomial(
+    variables,
+    max_degree,
+    coeff_range=(-20, 20),
+    max_terms=None,
+):
     """
     Generate a random multivariate polynomial with given variables and maximum degree.
-    
+
     Args:
-        variables: List of sympy symbols [b0, b1, b2, ...]
-        max_degree: Maximum total degree of the polynomial
-        min_coeff: Minimum coefficient value
-        max_coeff: Maximum coefficient value
-    
+        variables: List of sympy symbols [b0, b1, b2, ...].
+        max_degree: Maximum total degree of the polynomial.
+        coeff_range: (min, max) inclusive. Paper D2 uses (-5, 5).
+        max_terms: Maximum number of monomials in the output polynomial. If None,
+            the function samples a dense polynomial (up to ~10 extra terms, matching
+            the legacy behavior). Paper D2 uses max_terms=3 per §3.2.
+
     Returns:
-        A sympy polynomial expression
+        A sympy polynomial expression. The leading-degree monomial is guaranteed
+        to have a non-zero coefficient.
     """
     import itertools
-    
-    poly = 0
+
+    min_coeff, max_coeff = coeff_range
     num_vars = len(variables)
-    
-    # Generate all possible degree combinations up to max_degree
-    # For example, with 2 variables and max_degree=2: (0,0), (1,0), (0,1), (2,0), (1,1), (0,2)
+
+    # Enumerate all possible exponent tuples up to max_degree.
     degree_combinations = []
     for total_deg in range(max_degree + 1):
-        # Generate all ways to distribute total_deg among num_vars variables
         for combo in itertools.combinations_with_replacement(range(num_vars), total_deg):
             degrees = [0] * num_vars
             for var_idx in combo:
                 degrees[var_idx] += 1
             degree_combinations.append(tuple(degrees))
-    
-    # Remove duplicates and sort
     degree_combinations = list(set(degree_combinations))
-    
-    # Ensure we have at least one term with max_degree
-    max_degree_terms = [combo for combo in degree_combinations if sum(combo) == max_degree]
-    
-    # Add at least one term with maximum degree (non-zero coefficient)
+
+    # Always include one monomial at exactly max_degree (the "leading term").
+    max_degree_terms = [c for c in degree_combinations if sum(c) == max_degree]
+    poly = 0
     if max_degree_terms:
-        max_term = random.choice(max_degree_terms)
+        leading = random.choice(max_degree_terms)
         coeff = 0
         while coeff == 0:
             coeff = random.randint(min_coeff, max_coeff)
-        
         term = coeff
-        for var, deg in zip(variables, max_term):
+        for var, deg in zip(variables, leading):
             if deg > 0:
                 term *= var ** deg
         poly += term
-        degree_combinations.remove(max_term)
-    
-    # Randomly add other terms
-    num_terms = random.randint(1, min(len(degree_combinations), 10))  # Limit to 10 additional terms
-    selected_terms = random.sample(degree_combinations, min(num_terms, len(degree_combinations)))
-    
+        degree_combinations.remove(leading)
+
+    # Decide how many additional monomials to include.
+    if max_terms is None:
+        # Legacy behavior: up to 10 extra terms on top of the leading term.
+        num_additional = random.randint(1, min(len(degree_combinations), 10))
+    else:
+        # Paper-style: the *total* term count is <= max_terms (including leading).
+        remaining_budget = max(0, max_terms - 1)
+        num_additional = random.randint(0, min(len(degree_combinations), remaining_budget))
+
+    if num_additional == 0:
+        return poly
+
+    selected_terms = random.sample(degree_combinations, num_additional)
     for degrees in selected_terms:
-        # Random coefficient (can be zero)
         coeff = random.randint(min_coeff, max_coeff)
         if coeff != 0:
             term = coeff
@@ -334,44 +366,65 @@ def generate_random_multivariate_polynomial(variables, max_degree, min_coeff=-20
                 if deg > 0:
                     term *= var ** deg
             poly += term
-    
+
     return poly
 
 
-def generate_multivariate_dataset_line(num_inner_vars=3, num_outer_vars=3, 
-                                      max_degree_inner=2, max_degree_outer=2, 
-                                      debug=False):
+def generate_multivariate_dataset_line(
+    num_inner_vars=3,
+    num_outer_vars=3,
+    max_degree_inner=2,
+    max_degree_outer=2,
+    coeff_range_inner=(-20, 20),
+    coeff_range_outer=(-20, 20),
+    max_terms_inner=None,
+    max_terms_outer=None,
+    debug=False,
+):
     """
     Generate one line of multivariate polynomial decomposition dataset.
-    
+
     Args:
-        num_inner_vars: Number of inner variables (a0, a1, a2, ...)
-        num_outer_vars: Number of outer variables (b0, b1, b2, ...)
-        max_degree_inner: Maximum degree for each inner polynomial
-        max_degree_outer: Maximum degree for outer polynomial
-        debug: Whether to print debug information
-    
+        num_inner_vars: Number of inner variables (a0, a1, a2, ...).
+        num_outer_vars: Number of outer variables (b0, b1, b2, ...).
+        max_degree_inner: Maximum degree for each inner polynomial.
+        max_degree_outer: Maximum degree for outer polynomial.
+        coeff_range_inner / coeff_range_outer: (min, max) tuples. Paper D2
+            uses (-5, 5) for both; D3 uses (-20, 20) for inner, varies outer.
+        max_terms_inner / max_terms_outer: Max monomial count. Paper D2 uses 3.
+            Single-variable inners are dense by degree (max_terms_inner is
+            ignored for them, as a degree-d univariate can have at most d+1
+            terms anyway).
+        debug: Whether to print debug information.
+
     Returns:
-        Tuple of (formatted_line, (outer_poly, inner_polys, expanded_result))
+        Tuple of (formatted_line, (outer_poly, inner_polys, expanded_result)).
     """
     # Create inner variable symbols
     inner_vars = [sympy.Symbol(f'a{i}') for i in range(num_inner_vars)]
-    
+
     # Create outer variable symbols
     outer_vars = [sympy.Symbol(f'b{i}') for i in range(num_outer_vars)]
-    
+
     # Generate outer polynomial with random degree between 1 and max_degree_outer
     outer_degree = random.randint(1, max_degree_outer)
-    outer_poly = generate_random_multivariate_polynomial(outer_vars, outer_degree)
-    
+    outer_poly = generate_random_multivariate_polynomial(
+        outer_vars,
+        outer_degree,
+        coeff_range=coeff_range_outer,
+        max_terms=max_terms_outer,
+    )
+
     if debug:
         print(f"Outer polynomial (degree {outer_degree}): {outer_poly}")
-    
-    # Generate inner polynomials, each with random degree between 1 and max_degree_inner
+
+    # Generate inner polynomials, each with random degree between 1 and max_degree_inner.
+    # Each inner is univariate in its own variable (the paper's backward-generation
+    # algorithm — one inner per outer variable).
     inner_polys = []
     for i, var in enumerate(inner_vars):
         inner_degree = random.randint(1, max_degree_inner)
-        inner_poly = generate_random_polynomial(var, inner_degree)
+        inner_poly = generate_random_polynomial(var, inner_degree, coeff_range=coeff_range_inner)
         inner_polys.append(inner_poly)
         if debug:
             print(f"Inner polynomial {i} (degree {inner_degree}): {inner_poly}")
@@ -415,19 +468,20 @@ def generate_multivariate_dataset_line(num_inner_vars=3, num_outer_vars=3,
 
 def generate_multivariate_batch_worker(args):
     """Worker function for parallel multivariate batch generation."""
-    (num_inner_vars, num_outer_vars, max_degree_inner, max_degree_outer, 
+    (num_inner_vars, num_outer_vars, max_degree_inner, max_degree_outer,
+     coeff_range_inner, coeff_range_outer, max_terms_inner, max_terms_outer,
      batch_size, worker_id, show_progress) = args
-    
+
     expressions = []
     local_seen = set()
     attempts = 0
     max_attempts = batch_size * 10
-    
+
     # Set different random seed for each worker to avoid duplicates
     random.seed(worker_id * 1000 + random.randint(1, 999))
-    
+
     progress_interval = max(100, batch_size // 10)  # Show progress every 10% or 100 samples
-    
+
     while len(expressions) < batch_size and attempts < max_attempts:
         try:
             line, (outer_poly, inner_polys, expanded) = generate_multivariate_dataset_line(
@@ -435,7 +489,11 @@ def generate_multivariate_batch_worker(args):
                 num_outer_vars=num_outer_vars,
                 max_degree_inner=max_degree_inner,
                 max_degree_outer=max_degree_outer,
-                debug=False
+                coeff_range_inner=coeff_range_inner,
+                coeff_range_outer=coeff_range_outer,
+                max_terms_inner=max_terms_inner,
+                max_terms_outer=max_terms_outer,
+                debug=False,
             )
             
             # Create unique identifier from the polynomials
@@ -458,24 +516,37 @@ def generate_multivariate_batch_worker(args):
     return expressions, local_seen, worker_id
 
 
-def generate_multivariate_datasets_parallel(file_directory="data_storage/dataset/multivariate",
-                                           num_inner_vars=3, num_outer_vars=3,
-                                           max_degree_inner=2, max_degree_outer=2,
-                                           num_train=300000, num_test=3000, num_valid=128,
-                                           num_cpus=None):
+def generate_multivariate_datasets_parallel(
+    file_directory="data_storage/dataset/multivariate",
+    num_inner_vars=3,
+    num_outer_vars=3,
+    max_degree_inner=2,
+    max_degree_outer=2,
+    coeff_range_inner=(-20, 20),
+    coeff_range_outer=(-20, 20),
+    max_terms_inner=None,
+    max_terms_outer=None,
+    num_train=300000,
+    num_test=3000,
+    num_valid=128,
+    num_cpus=None,
+):
     """
     Generate multivariate polynomial decomposition datasets with parallel processing and deduplication.
-    
+
     Args:
-        file_directory: Directory to save the datasets
-        num_inner_vars: Number of inner variables
-        num_outer_vars: Number of outer variables  
-        max_degree_inner: Maximum degree for inner polynomials
-        max_degree_outer: Maximum degree for outer polynomial
-        num_train: Number of training samples (default 300,000)
-        num_test: Number of test samples (default 3,000)
-        num_valid: Number of validation samples (default 128)
-        num_cpus: Number of CPUs to use for parallel generation
+        file_directory: Directory to save the datasets.
+        num_inner_vars: Number of inner variables.
+        num_outer_vars: Number of outer variables.
+        max_degree_inner: Maximum degree for inner polynomials.
+        max_degree_outer: Maximum degree for outer polynomial.
+        coeff_range_inner / coeff_range_outer: (min, max) inclusive. Paper D2
+            uses (-5, 5) for both; D3 adaptation uses (-20, 20) for inner and
+            shifts outer between C1 and C2.
+        max_terms_inner / max_terms_outer: Max monomial count per polynomial.
+            Paper §3.2 sets both = 3 for D1-variable-scaling and D2.
+        num_train / num_test / num_valid: Dataset sizes.
+        num_cpus: Number of CPUs to use for parallel generation.
     """
     import time
     from collections import defaultdict
@@ -502,8 +573,9 @@ def generate_multivariate_datasets_parallel(file_directory="data_storage/dataset
     print(f"📊 Configuration:")
     print(f"   Inner variables: {num_inner_vars} (a0...a{num_inner_vars-1})")
     print(f"   Outer variables: {num_outer_vars} (b0...b{num_outer_vars-1})")
-    print(f"   Max degree (inner): {max_degree_inner}")
-    print(f"   Max degree (outer): {max_degree_outer}")
+    print(f"   Max degree (inner/outer): {max_degree_inner} / {max_degree_outer}")
+    print(f"   Coeff range (inner/outer): {coeff_range_inner} / {coeff_range_outer}")
+    print(f"   Max terms (inner/outer): {max_terms_inner} / {max_terms_outer}")
     print(f"   Dataset sizes: train={num_train:,}, test={num_test:,}, valid={num_valid}")
     print(f"💻 System has {os.cpu_count()} total CPU threads, using {num_workers} workers")
     print(f"🔧 Multiprocessing method: {mp.get_start_method()}")
@@ -533,6 +605,7 @@ def generate_multivariate_datasets_parallel(file_directory="data_storage/dataset
         if batch_size > 0:
             worker_args.append((
                 num_inner_vars, num_outer_vars, max_degree_inner, max_degree_outer,
+                coeff_range_inner, coeff_range_outer, max_terms_inner, max_terms_outer,
                 batch_size, worker_id, True  # show_progress=True
             ))
     
@@ -640,21 +713,23 @@ def generate_expressions_for_degrees(degree1, degree2, num_samples, seen_express
 
 def generate_batch_worker(args):
     """Worker function for parallel batch generation."""
-    degree1, degree2, batch_size, inner_only, worker_id, show_progress = args
-    
+    (degree1, degree2, batch_size, inner_only,
+     coeff_range_outer, coeff_range_inner,
+     worker_id, show_progress) = args
+
     expressions = []
     local_seen = set()
     attempts = 0
     max_attempts = batch_size * 10
-    
+
     # Set different random seed for each worker to avoid duplicates
     random.seed(worker_id * 1000 + random.randint(1, 999))
-    
+
     progress_interval = max(100, batch_size // 10)  # Show progress every 10% or 100 samples
-    
+
     # If degree1 and degree2 are None, generate random degrees for each sample
     use_random_degrees = (degree1 is None or degree2 is None)
-    
+
     while len(expressions) < batch_size and attempts < max_attempts:
         try:
             # Generate random degrees for each sample if requested
@@ -664,8 +739,14 @@ def generate_batch_worker(args):
             else:
                 current_degree1 = degree1
                 current_degree2 = degree2
-                
-            line, (poly1, poly2, result) = generate_dataset_line(current_degree1, current_degree2, inner_only=inner_only)
+
+            line, (poly1, poly2, result) = generate_dataset_line(
+                current_degree1,
+                current_degree2,
+                coeff_range_outer=coeff_range_outer,
+                coeff_range_inner=coeff_range_inner,
+                inner_only=inner_only,
+            )
             
             # Create a unique identifier for this expression combination
             expr_id = (str(poly1), str(poly2))
@@ -692,7 +773,16 @@ def generate_batch_worker(args):
 
 
 
-def generate_all_datasets_parallel(file_directory="datasets", num_train=100000, num_test=3000, num_valid=128, inner_only=False, num_cpus=None):
+def generate_all_datasets_parallel(
+    file_directory="datasets",
+    num_train=100000,
+    num_test=3000,
+    num_valid=128,
+    inner_only=False,
+    coeff_range_outer=(-20, 20),
+    coeff_range_inner=(-20, 20),
+    num_cpus=None,
+):
     """Generate all training and test datasets using multiprocessing for speed.
     
     Simplified approach:
@@ -765,7 +855,11 @@ def generate_all_datasets_parallel(file_directory="datasets", num_train=100000, 
             current_batch = remaining
         
         # All workers generate random degrees
-        worker_tasks.append((None, None, current_batch, inner_only, worker_id, True))
+        worker_tasks.append((
+            None, None, current_batch, inner_only,
+            coeff_range_outer, coeff_range_inner,
+            worker_id, True,
+        ))
         remaining -= current_batch
     
     print(f"  Distributing {total_to_generate:,} samples across {len(worker_tasks)} workers")

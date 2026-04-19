@@ -20,7 +20,6 @@ import torch.nn as nn
 from torch.nn import functional as F
 from transformers.modeling_outputs import CausalLMOutputWithPast # Import the standard output class
 
-torch.manual_seed(1)
 
 # Helper function needed for the new generate method
 def top_k_logits(logits, k):
@@ -246,8 +245,6 @@ class GPT(nn.Module):
             loss = F.cross_entropy(
                 logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=0
             )
-        
-        # print(f"[DEBUG] logits shape: {logits.shape}")
 
         if return_attentions:
             return logits, loss, attentions
@@ -284,7 +281,6 @@ class GPT(nn.Module):
         # --- End Params --- 
 
         if self.beam:
-            print(f"[DEBUG generate] beam search enabled")
             beam_width = len(input_ids)
             return self.beam_search(input_ids[0:1], max_new_tokens, beam_width, temperature=1.0, PaddingToken=None, hf=self.hf)
 
@@ -295,14 +291,10 @@ class GPT(nn.Module):
 
             # forward the model to get the logits for the index in the sequence
             # This call now returns a CausalLMOutputWithPast object
-            model_output = self(idx_cond) 
-            
+            model_output = self(idx_cond)
+
             # Extract the logits tensor from the model output object
-            logits = model_output.logits 
-            
-            # # --- DEBUG PRINT ---
-            # print(f"[DEBUG] Type of logits before slicing: {type(logits)}")
-            # # --- END DEBUG ---
+            logits = model_output.logits
 
             # pluck the logits at the final step and scale by desired temperature
             logits = logits[:, -1, :] / temperature
@@ -346,8 +338,7 @@ class GPT(nn.Module):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(device)  # Ensure model is on GPU
         x = x.to(device)  # Ensure input is on GPU
-        print(f"[DEBUG] data device: {x.device}")
-        
+
         # Remove trailing zeros from input sequence using tensor operations
         # Find last non-zero element
         non_zero_mask = x[0] != 0
@@ -359,9 +350,7 @@ class GPT(nn.Module):
         self.eval()
         # Initialize the beam with the input sequence and log probabilities
         beam = [(x, [], 0.0)]  # List of tuples (sequence, cumulative log probability)
-        print(f"Initial beam: {beam}")
-        
-        #for k in range(steps):
+
         for k in range(steps):
             candidates = []  # List to store candidates for the next step
 
@@ -541,9 +530,8 @@ class GPT_hf(GPT):
         
         # --- Get generation parameters from kwargs or config --- 
         # !! Important: Get max_new_tokens from kwargs !!
-        max_new_tokens = kwargs.get('max_new_tokens', 150) 
-        print(f"[DEBUG generate] max_new_tokens used: {max_new_tokens}") # DEBUG
-        
+        max_new_tokens = kwargs.get('max_new_tokens', 150)
+
         # Get other params (keep existing logic but ensure they come from kwargs if possible)
         temperature = kwargs.get('temperature', temperature) # Allow overriding default via kwargs
         do_sample = kwargs.get('do_sample', do_sample)
@@ -557,14 +545,8 @@ class GPT_hf(GPT):
         # --- End Params --- 
         
         if self.beam:
-            print(f"[DEBUG generate] beam search enabled")
-            print(f"[DEBUG generate] END_INDEX: {self.END_INDEX}, MASK_INDEX: {self.MASK_INDEX}")
             beam_width = len(input_ids)
-            print(f"[DEBUG generate] input_ids shape: {input_ids.shape}")
-            print(f"[DEBUG generate] beam width: {beam_width}")
-            beam_result = self.beam_search(input_ids[0:1], max_new_tokens, beam_width, temperature=1.0, PaddingToken=None, hf=self.hf)
-            print(f"[DEBUG generate] beam result: {beam_result}")
-            return beam_result
+            return self.beam_search(input_ids[0:1], max_new_tokens, beam_width, temperature=1.0, PaddingToken=None, hf=self.hf)
 
 
         for _ in range(max_new_tokens):
@@ -573,14 +555,10 @@ class GPT_hf(GPT):
 
             # forward the model to get the logits for the index in the sequence
             # This call now returns a CausalLMOutputWithPast object
-            model_output = self(idx_cond) 
-            
+            model_output = self(idx_cond)
+
             # Extract the logits tensor from the model output object
-            logits = model_output.logits 
-            
-            # # --- DEBUG PRINT ---
-            # print(f"[DEBUG] Type of logits before slicing: {type(logits)}")
-            # # --- END DEBUG ---
+            logits = model_output.logits
 
             # pluck the logits at the final step and scale by desired temperature
             logits = logits[:, -1, :] / temperature
@@ -610,40 +588,3 @@ class GPT_hf(GPT):
 
         return input_ids
 
-# # Define a Hugging Face compatible subclass
-# class GPT_hf(GPT):
-#     """ 
-#     A subclass of GPT that overrides the forward method to accept
-#     Hugging Face standard keyword arguments (e.g., input_ids).
-#     Also adds attributes required by TRL/HF trainers.
-#     """
-#     def __init__(self, config):
-#         super().__init__(config)
-#         # Add attributes expected by TRL/HF trainers
-#         self.warnings_issued = getattr(super(), 'warnings_issued', {}) # Inherit if base class has it, else init
-#         self.is_peft_model = False
-
-#     def add_model_tags(self, *args, **kwargs):
-#         """Dummy method for compatibility with GRPOTrainer."""
-#         # This method is often used for HuggingFace Hub integration, which we don't need here.
-#         pass # Does nothing
-
-#     def forward(self, input_ids=None, attention_mask=None, past_key_values=None, targets=None, **kwargs):
-#         """
-#         Overrides the forward method to map HF keyword args to the base GPT's positional args.
-#         """
-#         # Map input_ids keyword argument to idx positional argument for the parent method
-#         idx = input_ids 
-        
-#         # Call the original GPT forward method with the expected arguments
-#         # The original forward expects idx positionally and targets as a keyword
-#         logits, loss = super().forward(idx=idx, targets=targets)
-        
-#         # Return the output in the standard Hugging Face format
-#         return CausalLMOutputWithPast(
-#             loss=loss,
-#             logits=logits,
-#             past_key_values=None, # We are not using KV caching in this simplified model
-#             hidden_states=None, # We are not returning hidden states from the base model
-#             attentions=None, # We are not returning attentions from the base model
-#         )

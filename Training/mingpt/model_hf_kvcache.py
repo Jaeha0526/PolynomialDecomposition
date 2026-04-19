@@ -242,24 +242,15 @@ class GPT_hf_KVCache(GPTWithKVCache):
         
         if self.beam:
             # BGRPO mode: Use beam search with batch size as beam width
-            print(f"[DEBUG generate] beam search enabled with KV-cache")
-            print(f"[DEBUG generate] END_INDEX: {self.END_INDEX}, MASK_INDEX: {self.MASK_INDEX}")
-            
             beam_width = len(input_ids)
-            print(f"[DEBUG generate] input_ids shape: {input_ids.shape}")
-            print(f"[DEBUG generate] beam width: {beam_width}")
-            
-            # Use beam search with KV-cache
             beam_sequences = self.beam_search_with_cache(
                 input_ids[0:1],  # Just first prompt (they're all the same)
-                max_new_tokens, 
+                max_new_tokens,
                 beam_width=beam_width,
                 temperature=temperature,
                 pad_token=pad_token_id,
                 dataset=None  # Will be set by caller if needed
             )
-            
-            print(f"[DEBUG generate] beam result shape: {beam_sequences.shape}")
             return beam_sequences
         
         else:

@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "polynomial-decomposition"
+version = "0.1.0"
+description = "Transformer-based polynomial decomposition with Rank-Aware Beam GRPO (ICML 2025 MOSS)"
+authors = ["Polynomial Decomposition Authors"]
+readme = "README.md"
+license = "Apache-2.0"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+# Core DL stack. Keep TRL and transformers pinned — BGRPO's batching trick
+# depends on TRL 0.16.0's internal generate() behavior (see
+# Training/BGRPO/BGRPO_TRL_Trick_Explanation.md).
+#
+# torch is pinned to a cu124 wheel so it works on drivers >= CUDA 12.4
+# (the default PyPI torch ships with cu130, which most HPC drivers can't
+# load). If you're on a newer driver, feel free to bump.
+torch = {version = "2.6.0", source = "pytorch-cu124"}
+transformers = "4.46.3"
+trl = "0.16.0"
+datasets = "*"
+safetensors = "*"
+# Symbolic math + data generation.
+sympy = ">=1.12"
+numpy = ">=1.21.0"
+# Training loop / UX.
+tqdm = "*"
+matplotlib = "*"
+wandb = ">=0.15.0"
+
+[tool.poetry.group.dev.dependencies]
+# Notebooks used for simplification/leaf-count analysis and the tutorial.
+ipykernel = "*"
+jupyter = "*"
+
+[[tool.poetry.source]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+priority = "explicit"
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"

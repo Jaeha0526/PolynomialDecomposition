@@ -31,9 +31,21 @@ Our implementation is based on [Andrej Karpathy's minGPT](https://github.com/kar
 ## Getting Started
 
 ### 1. Setup
+
+Dependencies are managed with [Poetry](https://python-poetry.org/). The
+`setup.sh` script installs Poetry if it isn't already on `PATH`,
+configures the virtualenv to live in-project (`.venv/`), and installs
+everything declared in `pyproject.toml`.
+
 ```bash
 bash setup.sh
-# Or use setup_with_uv.sh for faster installation with uv package manager
+source .venv/bin/activate
+```
+
+For environments that cannot install Poetry (e.g. Colab), a mirrored
+`requirements.txt` is kept as a fallback:
+```bash
+pip install -r requirements.txt
 ```
 
 ### 2. Generating Datasets
@@ -80,16 +92,18 @@ generate_all_datasets_parallel(
 )"
 
 # Train model
-python Training/mingpt/main.py \
-    --dataset_path data_storage/dataset/single_variable/training_dataset.txt \
-    --val_dataset_path data_storage/dataset/single_variable/validation_dataset.txt \
-    --save_path data_storage/model/single_variable_model.pt \
+python Training/mingpt/run.py inequality_finetune \
+    --finetune_corpus_path data_storage/dataset/single_variable/training_dataset.txt \
+    --valid_corpus_path data_storage/dataset/single_variable/validation_dataset.txt \
+    --writing_params_path data_storage/model/single_variable_model.pt \
     --block_size 350 \
     --n_layer 6 \
     --n_head 8 \
     --n_embd 512 \
-    --max_epochs 10 \
-    --batch_size 512
+    --num_epochs 10 \
+    --batch_size 512 \
+    --finetune_lr 0.0006 \
+    --lr_decay 1 --shuffle 1
 ```
 
 #### O(N) Singlet Substitution (Toy Example - Not in Paper)
@@ -100,15 +114,39 @@ This is a toy example not included in our paper. An example experiment is provid
 - Testing with beam search (To use beam search, mathematica should be setup before.)
 
 #### Paper Experiments
-The complete experiment code for all results in our paper can be found in `Training/things_on_paper/`:
-- **exp0**: O(N) experiments
-- **exp1_2**: $\mathcal{D}_1$ first part - varying degrees of inner and outer polynomials
-- **exp1, exp2**: $\mathcal{D}_3$ - multi-variable polynomial experiments
-- **exp3-8**: $\mathcal{D}_2$ first part - varying embedding dimension and layer number
-- **exp10-11**: $\mathcal{D}_2$ second part - varying number of attention heads
-- **exp12-16**: $\mathcal{D}_1$ second part - varying number of variables in inner and outer polynomials
 
-**Important**: To run these paper experiments (other than the example cases above), you need to first generate the training, test, and validation datasets using the Mathematica package. The datasets should be generated and placed in `data_storage/things_on_paper/dataset/` before running the experiment scripts.
+The recommended entry point is the parameterized config system under
+`Training/things_on_paper/`. One SLURM wrapper (`run_experiment.sh`)
+sources a per-experiment `.env` file and runs the training pipeline:
+
+```bash
+sbatch Training/things_on_paper/run_experiment.sh \
+       Training/things_on_paper/configs/d2_arch_512_l6.env
+
+# Evaluation uses the same config file + checkpoint tag + test tag:
+sbatch Training/things_on_paper/eval/run_beam_eval.sh \
+       Training/things_on_paper/configs/d2_arch_512_l6.env \
+       model3_best data3_test 30
+```
+
+Available configs map to paper sections as follows:
+
+| Config | Paper section |
+|---|---|
+| `d1_degree.env` | §4.1 D₁ first part — degree scaling (single-var) |
+| `d1_var_{v_in}_{v_out}.env` | §4.1 D₁ second part — variable scaling (multi-var) |
+| `d2_arch_{d}_l{L}.env` | §4.2 D₂ first part — embedding dim × layers sweep |
+| `d2_heads_{h}.env` | §4.2 D₂ second part — attention-head sweep |
+| — (two-stage via `READ_CKPT`) | §4.3 D₃ — distribution adaptation |
+
+See `Training/things_on_paper/configs/README.md` for the full map and
+templates. Legacy `Training/things_on_paper/exp*.sh` scripts are kept
+as historical command logs for reference.
+
+**Important**: To run these paper experiments (other than the example
+cases above), you need to first generate the training, test, and
+validation datasets using the Mathematica package. The datasets should
+be placed in `data_storage/things_on_paper/dataset/` before running.
 
 ### 4. Evaluation
 
@@ -223,6 +261,26 @@ cd Training/BGRPO
 bash run_single_variable_model.sh
 ```
 BGRPO training supports KV-Cache optimization for faster beam search during reinforcement learning.
+
+**Single-GPU requirement**: BGRPO hijacks TRL's batching
+(`per_device_train_batch_size == num_generations == beam_width`), so
+launch scripts pin `CUDA_VISIBLE_DEVICES=0`. Running on multiple GPUs
+silently breaks the beam-width invariant. See
+`Training/BGRPO/BGRPO_TRL_Trick_Explanation.md` for details.
+
+### 6. Smoke tests
+
+A lightweight test suite lives in `dev/tests/` (gitignored) that
+exercises each paper experiment end-to-end on a tiny fixture — real
+training for one epoch on 100 examples with a tiny model — to catch
+code regressions quickly:
+
+```bash
+bash dev/tests/run_all.sh          # full suite, ~5 min on H100
+bash dev/tests/run_all.sh 01 02    # selective
+```
+
+See `dev/tests/README.md` for per-test coverage.
 
 ## Performance Optimizations
 

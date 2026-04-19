@@ -26,6 +26,7 @@ except ImportError:
 import dataset
 import model
 import utils
+from vocab import build_vocab
 
 
 def greedy_evaluate(
@@ -39,7 +40,9 @@ def greedy_evaluate(
     batch_size=32,
     sympy=1,
     max_output_length=150,
-    device=None
+    device=None,
+    extended_vocab=False,
+    max_number_token=101,
 ):
     """
     Evaluate a trained model using greedy search (based on inequality_evaluate4).
@@ -68,16 +71,10 @@ def greedy_evaluate(
     
     if device is None:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    
-    # Define vocabulary (same as in run.py)
-    chars_symbolic = [
-        "□", "a", "b", "c", "d", "e", "x", "y", "z",
-        "⁇", "?", "a0", "a1", "b0", "b1",
-        "N", "P", "&", "+", "*", "^",
-    ] + [str(i) for i in range(0, 10)]
-    
+
+    chars_symbolic = build_vocab(extended=extended_vocab, max_number_token=max_number_token)
     vocab_size = len(chars_symbolic)
-    
+
     # Create model configuration
     gpt_config = model.GPTConfig(
         vocab_size, block_size,
@@ -85,18 +82,19 @@ def greedy_evaluate(
         n_head=n_head,
         n_embd=n_embd
     )
-    
+
     # Initialize model
     gpt = model.GPT(gpt_config)
     gpt.load_state_dict(torch.load(model_path, map_location=device))
     gpt.to(device)
     gpt.eval()
-    
+
     # Create dataset
     test_dataset = dataset.SymbolicDataset(
         block_size,
         chars_symbolic,
         open(test_dataset_path, encoding="utf-8").read(),
+        use_extended_vocab=extended_vocab,
     )
     
     # Read lines
@@ -184,7 +182,9 @@ def beam_evaluate(
     max_test=None,
     sympy=1,
     max_output_length=150,
-    device=None
+    device=None,
+    extended_vocab=False,
+    max_number_token=101,
 ):
     """
     Evaluate a trained model using beam search (based on debug_beam).
@@ -204,16 +204,10 @@ def beam_evaluate(
     
     if device is None:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    
-    # Define vocabulary
-    chars_symbolic = [
-        "□", "a", "b", "c", "d", "e", "x", "y", "z",
-        "⁇", "?", "a0", "a1", "b0", "b1",
-        "N", "P", "&", "+", "*", "^",
-    ] + [str(i) for i in range(0, 10)]
-    
+
+    chars_symbolic = build_vocab(extended=extended_vocab, max_number_token=max_number_token)
     vocab_size = len(chars_symbolic)
-    
+
     # Create model
     gpt_config = model.GPTConfig(
         vocab_size, block_size,
@@ -221,17 +215,18 @@ def beam_evaluate(
         n_head=n_head,
         n_embd=n_embd
     )
-    
+
     gpt = model.GPT(gpt_config)
     gpt.load_state_dict(torch.load(model_path, map_location=device))
     gpt.to(device)
     gpt.eval()
-    
+
     # Create dataset
     test_dataset = dataset.SymbolicDataset(
         block_size,
         chars_symbolic,
         open(test_dataset_path, encoding="utf-8").read(),
+        use_extended_vocab=extended_vocab,
     )
     
     # Beam widths to evaluate
@@ -306,17 +301,17 @@ def evaluate_model(
 ):
     """
     Evaluate model with specified method.
-    
+
     Args:
         model_path: Path to model checkpoint
         test_dataset_path: Path to test dataset
         evaluation_type: 'greedy' or 'beam'
-        **kwargs: Additional arguments passed to evaluation function
-    
+        **kwargs: Additional arguments passed to evaluation function.
+            Use extended_vocab=True for multi-variable checkpoints.
+
     Returns:
         dict: Evaluation results
     """
-    
     if evaluation_type == 'greedy':
         return greedy_evaluate(model_path, test_dataset_path, **kwargs)
     elif evaluation_type == 'beam':

@@ -1,13 +1,13 @@
+# Auto-mirrored from pyproject.toml for `pip install -r requirements.txt`
+# fallbacks (e.g. Colab). The authoritative source of truth is pyproject.toml;
+# regenerate this file with `poetry export -f requirements.txt --output requirements.txt`.
 torch>=2.0.0
-datasets
 transformers==4.46.3
-tiktoken
-matplotlib
-wandb>=0.15.0
-gradescope-utils==0.5.0
-typing_extensions>=4.8.0
-pydantic>=2.0.0
+trl==0.16.0
+datasets
+safetensors
 sympy>=1.12
 numpy>=1.21.0
 tqdm
-trl==0.16.0 # should use this version.
+matplotlib
+wandb>=0.15.0
