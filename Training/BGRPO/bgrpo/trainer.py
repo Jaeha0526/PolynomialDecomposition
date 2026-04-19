@@ -37,7 +37,7 @@ import wandb
 from ._utils import forward_logits
 from .objective import GRPOObjective, ObjectiveConfig, gather_token_logprobs
 from .reward import RewardConfig, build_reward, compute_advantages
-from .rollout import BeamRollout, RolloutResult
+from .rollout import BeamRollout, RolloutResult, SamplingRollout
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +50,11 @@ class BGRPOConfig:
     learning_rate: float = 1e-5
     weight_decay: float = 0.0
     # Rollout
-    num_generations: int = 32         # beam width
+    num_generations: int = 32         # beam_width (BGRPO) or num_samples (GRPO)
     max_new_tokens: int = 150
     rollout_temperature: float = 1.0
     top_k: Optional[int] = None
+    use_beam: bool = True             # True = BGRPO (beam), False = GRPO (sampling)
     # Training schedule
     num_questions: int = 8            # prompts per batch
     num_iterations: int = 5           # policy updates per batch of prompts
@@ -106,17 +107,33 @@ class BGRPOTrainer:
             weight_decay=config.weight_decay,
         )
 
-        self.rollout = BeamRollout(
-            tokenizer=tokenizer,
-            beam_width=config.num_generations,
-            max_new_tokens=config.max_new_tokens,
-            temperature=config.rollout_temperature,
-            top_k=config.top_k,
-        )
+        if config.use_beam:
+            self.rollout = BeamRollout(
+                tokenizer=tokenizer,
+                beam_width=config.num_generations,
+                max_new_tokens=config.max_new_tokens,
+                temperature=config.rollout_temperature,
+                top_k=config.top_k,
+            )
+        else:
+            # GRPO mode: samples are iid, so the ordering the rollout returns
+            # carries no "rank" meaning. Refusing rank-style rewards here
+            # surfaces the conceptual mismatch instead of silently training
+            # on a decay applied to an arbitrary sample order.
+            if config.reward.kind in ("rank", "reverse_rank"):
+                raise ValueError(
+                    f"reward.kind={config.reward.kind!r} requires use_beam=True; "
+                    "sampled rollouts have no meaningful rank ordering."
+                )
+            self.rollout = SamplingRollout(
+                tokenizer=tokenizer,
+                num_samples=config.num_generations,
+                max_new_tokens=config.max_new_tokens,
+                temperature=config.rollout_temperature,
+                top_k=config.top_k,
+            )
 
-        # Reward config's beam width must match the rollout's num_generations.
-        # We used to silently rebuild here; now we raise so the user isn't
-        # surprised by a decay_base based on a beam width they didn't set.
+        # Reward config's beam_width must match the rollout's num_generations.
         if config.reward.beam_width != config.num_generations:
             raise ValueError(
                 f"RewardConfig.beam_width ({config.reward.beam_width}) must equal "

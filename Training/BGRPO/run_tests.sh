@@ -11,9 +11,9 @@ export PYTHONPATH="$HERE:$REPO/Training:${PYTHONPATH:-}"
 
 python3 - <<'PY'
 import sys, traceback
-from bgrpo.tests import test_reward, test_objective
+from bgrpo.tests import test_reward, test_objective, test_rollout
 passed = failed = 0
-for mod in (test_reward, test_objective):
+for mod in (test_reward, test_objective, test_rollout):
     for name in sorted(dir(mod)):
         if not name.startswith("test_"):
             continue

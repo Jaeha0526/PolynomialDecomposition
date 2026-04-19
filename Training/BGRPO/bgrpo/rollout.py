@@ -1,15 +1,18 @@
 """
-Beam-search rollout for BGRPO.
+Rollout strategies for BGRPO / GRPO.
 
-Produces the experience that the PPO objective consumes: a batch of
-completion sequences beam-sorted by cumulative log-prob, plus the per-token
-log-probs under the rollout policy (π_θold). The trainer re-scores those
-same token positions under the current policy (π_θ, with gradients) and the
-frozen reference policy (π_ref) during the optimization step.
+Produces the experience the PPO objective consumes: a batch of completion
+sequences plus per-token log-probs under the rollout policy (π_θold). The
+trainer re-scores those same positions under the current policy (π_θ, with
+gradients) and the frozen reference policy (π_ref) at optimization time.
 
-This module is deliberately standalone — it does not depend on TRL, and the
-beam-width invariant is *explicit* (``beam_width`` is a kwarg), not implied
-by the batch size as in the legacy ``grpo_*.py`` scripts.
+Two strategies share the same ``RolloutResult`` output so the trainer
+doesn't care which produced the experience:
+
+  * :class:`BeamRollout`     — deterministic top-w beam search (BGRPO).
+  * :class:`SamplingRollout` — iid multinomial samples from π_θold (GRPO).
+
+The ``use_beam`` config flag on the trainer picks between them.
 """
 
 from __future__ import annotations
@@ -46,7 +49,116 @@ class RolloutResult:
     rollout_logprobs: torch.Tensor  # (beam_width, max_completion_len)
     cumulative_logprobs: torch.Tensor  # (beam_width,) sum along valid positions
     beam_strings: List[str]         # decoded completions, for reward scoring
-    beam_ranks: torch.Tensor        # (beam_width,) — equals arange(0, w) by construction
+    beam_ranks: torch.Tensor        # (num_outputs,) — meaningful for beam only
+
+
+class SamplingRollout:
+    """
+    Multinomial sampling rollout — this is what turns ``BGRPOTrainer`` into
+    a vanilla GRPO trainer. Produces ``num_samples`` iid completions from
+    π_θold by batched multinomial sampling at each step.
+
+    Differences vs :class:`BeamRollout`:
+      * No ranking — ``beam_ranks`` is set to ``arange(num_samples)`` for
+        API compatibility but carries no ordering meaning. A ``rank`` reward
+        is therefore disallowed upstream in the trainer.
+      * One batched forward per step covers all samples, vs ``beam_width``
+        sequential forwards for beam. At num_samples=32 / max_new_tokens=150
+        this is dramatically faster than the current BeamRollout.
+      * Early termination happens per-sample via the ``active`` mask; the
+        batched forward still runs all samples but their post-END tokens
+        are mask-zeroed and don't contribute to loss.
+    """
+
+    def __init__(
+        self,
+        tokenizer,
+        num_samples: int,
+        max_new_tokens: int,
+        temperature: float = 1.0,
+        top_k: Optional[int] = None,
+    ) -> None:
+        assert num_samples >= 1
+        assert max_new_tokens >= 1
+        self.tokenizer = tokenizer
+        self.num_samples = num_samples
+        self.max_new_tokens = max_new_tokens
+        self.temperature = temperature
+        self.top_k = top_k
+
+    @torch.no_grad()
+    def __call__(self, model, prompt_ids: torch.Tensor) -> RolloutResult:
+        assert prompt_ids.dim() == 2 and prompt_ids.size(0) == 1
+        device = prompt_ids.device
+        end_idx = self.tokenizer.eos_token_id
+        mask_idx = self.tokenizer.mask_token_id
+        pad_idx = self.tokenizer.pad_token_id
+        block_size = model.get_block_size()
+        n = self.num_samples
+        prompt_len = prompt_ids.size(1)
+
+        was_training = model.training
+        model.eval()
+        try:
+            sequences = prompt_ids.expand(n, -1).contiguous().clone()
+            per_step_logp: list[torch.Tensor] = []
+            per_step_mask: list[torch.Tensor] = []
+            active = torch.ones(n, dtype=torch.bool, device=device)
+
+            for _ in range(self.max_new_tokens):
+                if sequences.size(1) >= block_size or not active.any():
+                    break
+                seq_cond = sequences if sequences.size(1) <= block_size else sequences[:, -block_size:]
+                logits, _ = forward_logits(model, seq_cond)
+                last_logits = logits[:, -1, :] / self.temperature
+                if self.top_k is not None:
+                    last_logits = top_k_logits(last_logits, self.top_k)
+
+                log_probs = F.log_softmax(last_logits, dim=-1)
+                next_tokens = torch.multinomial(log_probs.exp(), num_samples=1).squeeze(-1)  # (n,)
+                # MASK mid-sequence terminates the sample, same convention as beam.
+                next_tokens = torch.where(
+                    next_tokens == mask_idx,
+                    torch.full_like(next_tokens, end_idx),
+                    next_tokens,
+                )
+                step_logp = log_probs.gather(-1, next_tokens.unsqueeze(-1)).squeeze(-1)
+
+                # Record mask + logp BEFORE updating ``active``; the token
+                # emitted at this step counts toward the sample iff the
+                # sample was active coming into the step.
+                per_step_mask.append(active.clone())
+                per_step_logp.append(torch.where(active, step_logp, torch.zeros_like(step_logp)))
+
+                # For inactive samples, overwrite the sampled token with PAD —
+                # harmless because the mask will discard it, cleaner to read.
+                token_col = torch.where(active, next_tokens, torch.full_like(next_tokens, pad_idx))
+                sequences = torch.cat([sequences, token_col.unsqueeze(-1)], dim=1)
+                active = active & (next_tokens != end_idx)
+        finally:
+            if was_training:
+                model.train()
+
+        if not per_step_logp:
+            completion_ids = torch.empty(n, 0, dtype=torch.long, device=device)
+            completion_mask = torch.empty(n, 0, dtype=torch.bool, device=device)
+            rollout_logprobs = torch.empty(n, 0, device=device)
+        else:
+            completion_ids = sequences[:, prompt_len:]
+            rollout_logprobs = torch.stack(per_step_logp, dim=1)
+            completion_mask = torch.stack(per_step_mask, dim=1)
+
+        cumulative = rollout_logprobs.sum(dim=1)
+        beam_strings = self.tokenizer.batch_decode(completion_ids.cpu().tolist())
+        return RolloutResult(
+            prompt_ids=prompt_ids,
+            completion_ids=completion_ids,
+            completion_mask=completion_mask,
+            rollout_logprobs=rollout_logprobs,
+            cumulative_logprobs=cumulative,
+            beam_strings=beam_strings,
+            beam_ranks=torch.arange(n, device=device),
+        )
 
 
 class BeamRollout:

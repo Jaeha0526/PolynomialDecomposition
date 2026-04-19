@@ -73,6 +73,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--rollout_temperature", type=float, default=1.0)
     p.add_argument("--top_k", type=int, default=None,
                    help="Restrict per-step sampling to top-k tokens (optional)")
+    p.add_argument("--use_beam", type=lambda s: s.lower() in ("1", "true", "yes"),
+                   default=True,
+                   help="true = BGRPO (beam rollout), false = GRPO (multinomial sampling)")
     p.add_argument("--lr", type=float, default=1e-5)
     p.add_argument("--kl_beta", type=float, default=0.01)
     p.add_argument("--clip_epsilon", type=float, default=0.2)
@@ -117,6 +120,7 @@ def main() -> None:
         max_new_tokens=args.max_new_tokens,
         rollout_temperature=args.rollout_temperature,
         top_k=args.top_k,
+        use_beam=args.use_beam,
         num_questions=args.num_questions,
         num_iterations=args.num_iterations,
         total_training_samples=args.total_training_samples,
