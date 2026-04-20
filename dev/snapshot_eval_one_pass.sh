@@ -22,41 +22,87 @@ echo "=== $HUMAN_TS — pass start ==="
 CSV="$MONITOR_DIR/snapshot_history.csv"
 ACSV="$MONITOR_DIR/analysis_history.csv"
 
-# --- 1a. rotate old snapshots whose evaluations have already completed ---
-# Only delete snapshots whose timestamp is already present in snapshot_history.csv
-# (i.e. the eval finished and its row is recorded). Leave in-flight snapshots
-# alone so their queued eval jobs can still read them. Never touches
-# ``_best.pt`` (training best) or ``_snapshot_best.pt`` (preserved best).
+# --- 1a. rotate old snapshots whose evaluations are terminal (done or dead) ---
+# Delete a snapshot if:
+#   (a) its (model, timestamp) already has a CSV row, OR
+#   (b) it has no sidecar .jobs file (orphan from a crashed pass), OR
+#   (c) its sidecar lists only non-running SLURM jobs — meaning the evals are
+#       either completed-but-didn't-write-CSV or cancelled/failed/timed out.
+# Keep the snapshot if any of its sidecar jobs is still PENDING/RUNNING.
+# Never touches ``_best.pt`` or ``_snapshot_best.pt`` (pattern mismatch).
 python3 - "$REPO/data_storage/things_on_paper/model" "$CSV" <<'PY' || true
-import csv, glob, os, re, sys
+import csv, glob, os, re, subprocess, sys
 model_dir, csv_path = sys.argv[1], sys.argv[2]
-# Build the set of (model, compact_ts) pairs that already have a CSV row.
+
 evaluated = set()
 if os.path.isfile(csv_path):
     with open(csv_path) as f:
         for row in csv.DictReader(f):
             ts = row.get("timestamp", "")
-            # CSV has "YYYY-MM-DD HH:MM:SS"; snapshot files use "YYYYMMDD_HHMMSS".
             ts_c = ts.replace("-", "").replace(" ", "_").replace(":", "")
             evaluated.add((row.get("model", ""), ts_c))
 
+RUNNING_STATES = {"PENDING", "RUNNING", "REQUEUED", "SUSPENDED",
+                  "CONFIGURING", "COMPLETING", "RESIZING"}
+
+def job_state(jid: str) -> str:
+    """Best-effort single-job state via sacct; empty if unknown."""
+    try:
+        out = subprocess.check_output(
+            ["sacct", "-j", jid, "-n", "-X", "-o", "State"],
+            stderr=subprocess.DEVNULL, text=True, timeout=10,
+        )
+        return out.strip().split("\n")[0].strip().split()[0] if out.strip() else ""
+    except Exception:
+        return ""
+
+def any_still_running(sidecar: str) -> bool:
+    """True if any job in the sidecar is still PENDING/RUNNING."""
+    try:
+        lines = [l.strip().split() for l in open(sidecar) if l.strip()]
+    except OSError:
+        return False
+    for kv in lines:
+        if len(kv) < 2: continue
+        st = job_state(kv[1])
+        if st in RUNNING_STATES or st == "":
+            # Unknown state → treat as still-running to be safe.
+            return True
+    return False
+
 pat = re.compile(r"^d2_arch_(\d+)_l6_best_snapshot_(\d{8}_\d{6})\.pt$")
-removed = kept = 0
+removed_done = removed_dead = removed_orphan = kept = 0
 for f in sorted(glob.glob(os.path.join(model_dir, "d2_arch_*_l6_best_snapshot_*.pt"))):
     name = os.path.basename(f)
     m = pat.match(name)
     if not m:
-        # A malformed snapshot name — leave it alone. Never matches _snapshot_best.pt.
         continue
     D, ts = m.group(1), m.group(2)
+    sidecar = f[:-3] + ".jobs"
+
     if (f"d={D}", ts) in evaluated:
         os.remove(f)
-        print(f"  rotated out (eval done): {name}")
-        removed += 1
-    else:
+        if os.path.exists(sidecar): os.remove(sidecar)
+        print(f"  rotated (eval done): {name}")
+        removed_done += 1
+        continue
+
+    if not os.path.exists(sidecar):
+        os.remove(f)
+        print(f"  rotated (orphan — no sidecar): {name}")
+        removed_orphan += 1
+        continue
+
+    if any_still_running(sidecar):
         print(f"  keeping (eval pending): {name}")
         kept += 1
-print(f"  rotation summary: removed={removed}, kept_pending={kept}")
+    else:
+        os.remove(f); os.remove(sidecar)
+        print(f"  rotated (eval dead — jobs terminal w/o CSV row): {name}")
+        removed_dead += 1
+
+print(f"  rotation summary: done={removed_done}, dead={removed_dead}, "
+      f"orphan={removed_orphan}, kept_pending={kept}")
 PY
 
 # --- 1b. snapshot the current training best (new timestamp) ---
@@ -91,6 +137,12 @@ for D in 256 512 768; do
         sbatch --parsable \
         Training/things_on_paper/analysis/run_analysis_combined.sh \
         Training/things_on_paper/configs/d2_arch_${D}_l6.env)
+    # Sidecar .jobs file next to the snapshot so the next tick's rotation can
+    # tell "eval still queued" (keep) from "eval finished w/o CSV row or was
+    # cancelled" (delete). Atomic single-shot write.
+    SIDECAR="$REPO/data_storage/things_on_paper/model/${SNAP[$D]}.jobs"
+    printf 'greedy %s\nbeam %s\nanalysis %s\n' \
+        "${GREEDY_JOB[$D]}" "${BEAM_JOB[$D]}" "${ANALYSIS_JOB[$D]}" > "$SIDECAR"
     echo "  d=$D submitted: greedy=${GREEDY_JOB[$D]} beam${BEAM_WIDTH}=${BEAM_JOB[$D]} analysis=${ANALYSIS_JOB[$D]}"
 done
 
