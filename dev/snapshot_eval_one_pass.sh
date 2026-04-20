@@ -22,6 +22,23 @@ echo "=== $HUMAN_TS — pass start ==="
 CSV="$MONITOR_DIR/snapshot_history.csv"
 ACSV="$MONITOR_DIR/analysis_history.csv"
 
+# --- helper functions (hoisted so earlier steps can call them) ---
+latest_train_iter_and_loss() {
+    # "$@" = one or more training-job slurm files (ordered oldest-to-newest
+    # for chained continuations). Returns "<global_iter> <valid_loss>".
+    python3 "$REPO/dev/_parse_train_log.py" "$@"
+}
+
+# Read the training-job chain from the registry so chained-continuation logs
+# are automatically picked up after the first job completes.
+CHAIN_FILE="$MONITOR_DIR/train_chain.txt"
+read_chain() {
+    # $1 = model tag (d=256/512/768). Echoes space-separated slurm-*.out paths.
+    local tag="$1"
+    [[ -f "$CHAIN_FILE" ]] || return 0
+    awk -v t="$tag" '!/^#/ && $1==t {for (i=2;i<=NF;i++) print "'"$REPO"'/slurm-" $i ".out"}' "$CHAIN_FILE" | xargs 2>/dev/null
+}
+
 # --- 1a. rotate old snapshots whose evaluations are terminal (done or dead) ---
 # Delete a snapshot if:
 #   (a) its (model, timestamp) already has a CSV row, OR
@@ -56,18 +73,20 @@ def job_state(jid: str) -> str:
     except Exception:
         return ""
 
+JOB_KEYS = {"greedy", "beam", "analysis"}
+
 def any_still_running(sidecar: str) -> bool:
     """True if any job in the sidecar is still PENDING/RUNNING."""
     try:
-        lines = [l.strip().split() for l in open(sidecar) if l.strip()]
+        lines = [l.strip().split() for l in open(sidecar) if l.strip() and not l.startswith("#")]
     except OSError:
         return False
     for kv in lines:
-        if len(kv) < 2: continue
+        if len(kv) < 2 or kv[0] not in JOB_KEYS:
+            continue
         st = job_state(kv[1])
         if st in RUNNING_STATES or st == "":
-            # Unknown state → treat as still-running to be safe.
-            return True
+            return True   # unknown state → be safe, keep
     return False
 
 pat = re.compile(r"^d2_arch_(\d+)_l6_best_snapshot_(\d{8}_\d{6})\.pt$")
@@ -106,7 +125,11 @@ print(f"  rotation summary: done={removed_done}, dead={removed_dead}, "
 PY
 
 # --- 1b. snapshot the current training best (new timestamp) ---
+# Skip when the training iter hasn't advanced since the most recent sidecar —
+# typically this means the model's chained job is still pending on afterok
+# (no new training happening), so a fresh snapshot would be identical.
 declare -A SNAP
+SNAP_ITER_STEP_THRESHOLD=50
 for D in 256 512 768; do
     SRC="$REPO/data_storage/things_on_paper/model/d2_arch_${D}_l6_best.pt"
     DST="$REPO/data_storage/things_on_paper/model/d2_arch_${D}_l6_best_snapshot_${TS}.pt"
@@ -114,9 +137,28 @@ for D in 256 512 768; do
         echo "WARN d=$D: no best checkpoint at $SRC — skipping snapshot"
         continue
     fi
+
+    # shellcheck disable=SC2046
+    CUR_INFO=$(latest_train_iter_and_loss $(read_chain "d=$D") 2>/dev/null || echo "0 NaN")
+    CUR_ITER=${CUR_INFO%% *}
+
+    # Find the iter recorded in the most recent prior sidecar for this model.
+    PREV_ITER=
+    PREV_SIDECAR=$(ls -t "$REPO/data_storage/things_on_paper/model/d2_arch_${D}_l6_best_snapshot_"*.jobs 2>/dev/null | head -1)
+    if [[ -n "$PREV_SIDECAR" ]]; then
+        PREV_ITER=$(awk '$1=="iter"{print $2; exit}' "$PREV_SIDECAR")
+    fi
+    if [[ -n "$PREV_ITER" && "$PREV_ITER" =~ ^[0-9]+$ && "$CUR_ITER" =~ ^[0-9]+$ ]]; then
+        DIFF=$(( CUR_ITER - PREV_ITER ))
+        if (( DIFF < SNAP_ITER_STEP_THRESHOLD )); then
+            echo "  d=$D: iter advanced only $DIFF (<$SNAP_ITER_STEP_THRESHOLD) since last snapshot — skipping (training likely pending)"
+            continue
+        fi
+    fi
+
     cp "$SRC" "$DST"
     SNAP[$D]="d2_arch_${D}_l6_best_snapshot_${TS}"
-    echo "  d=$D snapshot → $(basename "$DST")"
+    echo "  d=$D snapshot → $(basename "$DST")  (iter=$CUR_ITER)"
 done
 
 # --- 2. submit 9 jobs: greedy + beam eval + analysis combo for each model ---
@@ -137,12 +179,24 @@ for D in 256 512 768; do
         sbatch --parsable \
         Training/things_on_paper/analysis/run_analysis_combined.sh \
         Training/things_on_paper/configs/d2_arch_${D}_l6.env)
-    # Sidecar .jobs file next to the snapshot so the next tick's rotation can
-    # tell "eval still queued" (keep) from "eval finished w/o CSV row or was
-    # cancelled" (delete). Atomic single-shot write.
+    # Sidecar .jobs file next to the snapshot. Rotation at the next tick
+    # consults it to tell "eval still queued" (keep) from "eval dead" (delete).
+    # We also record the training iteration and valid_loss at snapshot time so
+    # post-hoc inspection of a snapshot doesn't need to cross-reference logs.
     SIDECAR="$REPO/data_storage/things_on_paper/model/${SNAP[$D]}.jobs"
-    printf 'greedy %s\nbeam %s\nanalysis %s\n' \
-        "${GREEDY_JOB[$D]}" "${BEAM_JOB[$D]}" "${ANALYSIS_JOB[$D]}" > "$SIDECAR"
+    # shellcheck disable=SC2046
+    SNAP_TRAIN_INFO=$(latest_train_iter_and_loss $(read_chain "d=$D") 2>/dev/null || echo "0 NaN")
+    SNAP_ITER=${SNAP_TRAIN_INFO%% *}
+    SNAP_VLOSS=${SNAP_TRAIN_INFO##* }
+    {
+        echo "# snapshot metadata"
+        echo "timestamp $HUMAN_TS"
+        echo "iter $SNAP_ITER"
+        echo "valid_loss $SNAP_VLOSS"
+        echo "greedy ${GREEDY_JOB[$D]}"
+        echo "beam ${BEAM_JOB[$D]}"
+        echo "analysis ${ANALYSIS_JOB[$D]}"
+    } > "$SIDECAR"
     echo "  d=$D submitted: greedy=${GREEDY_JOB[$D]} beam${BEAM_WIDTH}=${BEAM_JOB[$D]} analysis=${ANALYSIS_JOB[$D]}"
 done
 
@@ -181,21 +235,6 @@ extract_beam() {
         | grep -E "^Beam width $2:" | tail -1 | awk '{printf "%d %d\n", $4, $7}'
 }
 
-latest_train_iter_and_loss() {
-    # "$@" = one or more training-job slurm files (ordered oldest-to-newest
-    # for chained continuations). Returns "<global_iter> <valid_loss>".
-    python3 "$REPO/dev/_parse_train_log.py" "$@"
-}
-
-# Read the training-job chain from the registry so chained-continuation logs
-# are automatically picked up after the first job completes.
-CHAIN_FILE="$MONITOR_DIR/train_chain.txt"
-read_chain() {
-    # $1 = model tag (d=256/512/768). Echoes space-separated slurm-*.out paths.
-    local tag="$1"
-    [[ -f "$CHAIN_FILE" ]] || return 0
-    awk -v t="$tag" '!/^#/ && $1==t {for (i=2;i<=NF;i++) print "'"$REPO"'/slurm-" $i ".out"}' "$CHAIN_FILE" | xargs 2>/dev/null
-}
 for D in 256 512 768; do
     [[ -z "${SNAP[$D]:-}" ]] && continue
     g="$REPO/slurm-${GREEDY_JOB[$D]:-X}.out"
