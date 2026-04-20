@@ -30,11 +30,39 @@ PLOTS.mkdir(parents=True, exist_ok=True)
 CSV_PATH = PLOTS / "snapshot_history.csv"
 ANALYSIS_CSV_PATH = PLOTS / "analysis_history.csv"
 
-TRAIN_LOGS = {
-    "d=256": REPO / "slurm-63156718.out",
-    "d=512": REPO / "slurm-63157920.out",
-    "d=768": REPO / "slurm-63157921.out",
-}
+# Training-log chain registry — one line per model, space-separated slurm IDs
+# ordered oldest → newest. Chained continuations (afterok dependencies) get
+# appended here by snapshot_eval_one_pass.sh; the plotter concatenates them.
+CHAIN_FILE = PLOTS / "train_chain.txt"
+
+
+def _read_chain() -> dict[str, list[Path]]:
+    """Return {model_tag: [slurm-<id>.out, ...]} from the chain registry.
+
+    Falls back to the hard-coded original three D2 jobs if the registry is
+    missing (e.g. early in a fresh run)."""
+    default = {
+        "d=256": [REPO / "slurm-63156718.out"],
+        "d=512": [REPO / "slurm-63157920.out"],
+        "d=768": [REPO / "slurm-63157921.out"],
+    }
+    if not CHAIN_FILE.exists():
+        return default
+    out: dict[str, list[Path]] = {}
+    for line in CHAIN_FILE.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        model, jobs = parts[0], parts[1:]
+        out[model] = [REPO / f"slurm-{j}.out" for j in jobs]
+    # preserve any model not overridden by the registry
+    for k, v in default.items():
+        out.setdefault(k, v)
+    return out
+
+
+TRAIN_LOGS = _read_chain()
 
 # Epoch-aware iter timeline lives in _parse_train_log.py — import via path.
 import importlib.util
@@ -82,7 +110,7 @@ def read_history() -> dict[str, list[dict]]:
 def plot_progress(history: dict[str, list[dict]]) -> None:
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
     for ax, name in zip(axes, ("d=256", "d=512", "d=768")):
-        timeline = _ptl.iter_timeline(TRAIN_LOGS[name])
+        timeline = _ptl.iter_timeline(*TRAIN_LOGS[name])
         iters = [g for g, _, _ in timeline]
         tr = [t for _, t, _ in timeline]
         vl = [v for _, _, v in timeline]

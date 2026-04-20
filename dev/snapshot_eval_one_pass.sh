@@ -97,14 +97,21 @@ extract_beam() {
 }
 
 latest_train_iter_and_loss() {
-    # $1 = training-job slurm file. Returns "<global_iter> <valid_loss>" with
-    # epoch arithmetic handled in Python (d=256 is on epoch 2 already).
-    python3 "$REPO/dev/_parse_train_log.py" "$1"
+    # "$@" = one or more training-job slurm files (ordered oldest-to-newest
+    # for chained continuations). Returns "<global_iter> <valid_loss>".
+    python3 "$REPO/dev/_parse_train_log.py" "$@"
 }
 
-TRAIN_JOBS=(63156718 63157920 63157921)  # d=256, d=512, d=768
-for idx in 0 1 2; do
-    D=$(echo "256 512 768" | cut -d' ' -f$((idx+1)))
+# Read the training-job chain from the registry so chained-continuation logs
+# are automatically picked up after the first job completes.
+CHAIN_FILE="$MONITOR_DIR/train_chain.txt"
+read_chain() {
+    # $1 = model tag (d=256/512/768). Echoes space-separated slurm-*.out paths.
+    local tag="$1"
+    [[ -f "$CHAIN_FILE" ]] || return 0
+    awk -v t="$tag" '!/^#/ && $1==t {for (i=2;i<=NF;i++) print "'"$REPO"'/slurm-" $i ".out"}' "$CHAIN_FILE" | xargs 2>/dev/null
+}
+for D in 256 512 768; do
     [[ -z "${SNAP[$D]:-}" ]] && continue
     g="$REPO/slurm-${GREEDY_JOB[$D]:-X}.out"
     b="$REPO/slurm-${BEAM_JOB[$D]:-X}.out"
@@ -118,7 +125,8 @@ for idx in 0 1 2; do
     bt=$(echo "$beam_pair" | awk '{print $2+0}')
     gacc=$(awk -v c="$gc" -v t="$gt" 'BEGIN{if(t>0) printf "%.3f", 100*c/t; else print "NaN"}')
     bacc=$(awk -v c="$bc" -v t="$bt" 'BEGIN{if(t>0) printf "%.3f", 100*c/t; else print "NaN"}')
-    train_info=$(latest_train_iter_and_loss "$REPO/slurm-${TRAIN_JOBS[$idx]}.out")
+    # shellcheck disable=SC2046 # intentional word-splitting of space-separated paths
+    train_info=$(latest_train_iter_and_loss $(read_chain "d=$D"))
     t_iter=${train_info%% *}
     t_vloss=${train_info##* }
     echo "$HUMAN_TS,d=$D,$gc,$gt,$gacc,$bc,$bt,$bacc,$t_vloss,$t_iter,${BEAM_JOB[$D]}" >> "$CSV"
@@ -173,7 +181,8 @@ for D in 256 512 768; do
         continue
     }
     # pull iter from the same train-log we already parsed above
-    t_info=$(latest_train_iter_and_loss "$REPO/slurm-${TRAIN_JOBS[$(( (D==256)?0:(D==512)?1:2 ))]}.out")
+    # shellcheck disable=SC2046
+    t_info=$(latest_train_iter_and_loss $(read_chain "d=$D"))
     t_iter=${t_info%% *}
     row=$(extract_analysis_row "$ADIR/confusion.json" "$ADIR/circuits.json")
     if [[ -n "$row" ]]; then
@@ -181,6 +190,37 @@ for D in 256 512 768; do
         echo "  d=$D analyzer: $row"
     fi
 done
+
+# --- 4c. preserve best-ever beam7 snapshots as _snapshot_best.pt ---
+# Runs after CSV append so "this pass" is already part of the aggregation.
+python3 - "$CSV" "$HUMAN_TS" "$REPO" "${SNAP[256]:-}" "${SNAP[512]:-}" "${SNAP[768]:-}" <<'PY' || true
+import csv, os, shutil, sys
+csv_path, ts, repo, *snap_stems = sys.argv[1:]
+snap_by_d = dict(zip(("256", "512", "768"), snap_stems))
+best: dict[str, float] = {}      # model → max beam7_acc seen
+this: dict[str, float] = {}      # model → beam7_acc at ts (this pass)
+with open(csv_path) as f:
+    for row in csv.DictReader(f):
+        try:
+            b = float(row["beam7_acc"])
+        except (KeyError, ValueError):
+            continue
+        m = row["model"]
+        best[m] = max(best.get(m, -1.0), b)
+        if row["timestamp"] == ts:
+            this[m] = b
+model_dir = f"{repo}/data_storage/things_on_paper/model"
+for d_key, b in this.items():
+    D = d_key.split("=")[1]
+    stem = snap_by_d.get(D, "")
+    if not stem or b < best[d_key]:
+        continue
+    src = f"{model_dir}/{stem}.pt"
+    dst = f"{model_dir}/d2_arch_{D}_l6_snapshot_best.pt"
+    if os.path.isfile(src):
+        shutil.copy2(src, dst)
+        print(f"  d={D}: new best-ever beam7 ({b:.2f}%) preserved → {os.path.basename(dst)}")
+PY
 
 # --- 5. regenerate the plots ---
 python3 "$REPO/dev/plot_snapshot_history.py" || echo "plot regeneration failed (non-fatal)"
