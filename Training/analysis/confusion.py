@@ -72,17 +72,18 @@ def measure(
         y = torch.stack(ys).to(device)
 
         logits, _ = model(x)                             # (B, T, V)
-        # For predicting y[:, t] we use logits[:, t-1, :]; shift once.
-        logits = logits[:, :-1, :]
-        targets = y[:, 1:]                               # (B, T-1)
-
+        # SymbolicDataset.__getitem__ already returns a shifted target
+        # sequence: y[:, t] is the intended label for logits[:, t, :]
+        # (prompt positions are pre-masked to PAD for loss-ignoring).
+        # Adding another shift here would make this "predict 2-ahead".
+        targets = y                                      # (B, T)
         probs = F.softmax(logits, dim=-1)
         tgt_prob = probs.gather(-1, targets.unsqueeze(-1)).squeeze(-1)   # P(target)
-        preds = probs.argmax(dim=-1)                     # (B, T-1)
+        preds = probs.argmax(dim=-1)                     # (B, T)
         correct = preds.eq(targets)
 
         valid = targets.ne(pad_id)                       # drop padded positions
-        tgt_cat = cat_vec[targets]                       # (B, T-1)
+        tgt_cat = cat_vec[targets]                       # (B, T)
 
         # Flatten valid positions and aggregate.
         v_cats = tgt_cat[valid].tolist()
