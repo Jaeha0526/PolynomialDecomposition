@@ -75,6 +75,11 @@ else
 fi
 DATASET_DIR="${REPO}/data_storage/things_on_paper/dataset/${DATA_TAG}"
 MODEL_DIR="${REPO}/data_storage/things_on_paper/model"
+# Per-round subdir (e.g. ROUND_DIR=round3) so distinct experiment cohorts don't
+# commingle under model/. Default empty = flat layout (round1/round2 today).
+if [[ -n "${ROUND_DIR:-}" ]]; then
+    MODEL_DIR="${MODEL_DIR}/${ROUND_DIR}"
+fi
 mkdir -p "$MODEL_DIR"
 
 source "$REPO/.venv/bin/activate"

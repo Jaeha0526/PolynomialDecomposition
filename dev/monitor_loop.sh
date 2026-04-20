@@ -10,7 +10,7 @@ cd "$REPO"
 LOG="$REPO/data_storage/things_on_paper/monitor/monitor.log"
 mkdir -p "$(dirname "$LOG")"
 PIDFILE="$REPO/data_storage/things_on_paper/monitor/monitor.pid"
-INTERVAL=${INTERVAL:-2400}  # seconds (40 min default)
+INTERVAL=${INTERVAL:-1200}  # seconds (20 min default)
 
 # --- singleton guard + session detach ---
 if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then

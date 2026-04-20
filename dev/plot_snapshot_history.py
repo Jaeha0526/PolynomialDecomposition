@@ -40,7 +40,8 @@ def _read_chain() -> dict[str, list[Path]]:
     """Return {model_tag: [slurm-<id>.out, ...]} from the chain registry.
 
     Falls back to the hard-coded original three D2 jobs if the registry is
-    missing (e.g. early in a fresh run)."""
+    missing (e.g. early in a fresh run). Any model not in the registry (new
+    sibling branches, etc.) surfaces once rows appear in the CSV."""
     default = {
         "d=256": [REPO / "slurm-63156718.out"],
         "d=512": [REPO / "slurm-63157920.out"],
@@ -56,7 +57,6 @@ def _read_chain() -> dict[str, list[Path]]:
         parts = line.split()
         model, jobs = parts[0], parts[1:]
         out[model] = [REPO / f"slurm-{j}.out" for j in jobs]
-    # preserve any model not overridden by the registry
     for k, v in default.items():
         out.setdefault(k, v)
     return out
@@ -78,7 +78,44 @@ BEAM_LINE = re.compile(r"^Beam width (\d+): (\d+) out of (\d+):")
 
 # Paper Fig 8 numbers for 6-layer D2 baselines (SFT, before any BGRPO), at
 # beam width 30. Listed here so every plot can overlay them as reference.
-PAPER_SFT_BEAM30 = {"d=256": 26.1, "d=512": 29.5, "d=768": 32.1}
+# d=256b is our sibling-branch stable relaunch from the 35.7% snapshot;
+# reuse the d=256 paper number since it's the same architecture.
+PAPER_SFT_BEAM30 = {
+    "d=256":   26.1, "d=512":   29.5, "d=768":   32.1,
+    "d=256b":  26.1, "d=512r2": 29.5, "d=768r2": 32.1,
+}
+
+# Rounds: round 1 = original fresh runs; round 2 = stable-resume /
+# from-scratch restarts. Plots for each round are emitted into separate files
+# so they can be tracked independently.
+ROUND_MODELS: dict[int, tuple[str, ...]] = {
+    # Round 1 models d=256 / d=512 are STOPPED (no new evals) but their
+    # historical CSV rows still plot — just the trace won't advance.
+    1: ("d=256", "d=512", "d=768"),
+    2: ("d=256b", "d=512r2", "d=768r2"),
+}
+MODEL_ORDER: tuple[str, ...] = ROUND_MODELS[1] + ROUND_MODELS[2]
+MODEL_COLORS = {
+    "d=256":   "#1f77b4",
+    "d=512":   "#ff7f0e",
+    "d=768":   "#2ca02c",
+    "d=256b":  "#17becf",
+    "d=512r2": "#d62728",
+    "d=768r2": "#9467bd",
+}
+
+
+def _round_of(model: str) -> int | None:
+    for r, ms in ROUND_MODELS.items():
+        if model in ms:
+            return r
+    return None
+
+
+def _models_for_round(history: dict, rnd: int) -> list[str]:
+    """Return this round's models that have at least one CSV row (or a
+    registered training chain), in ROUND_MODELS order."""
+    return [m for m in ROUND_MODELS[rnd] if m in history or m in TRAIN_LOGS]
 
 
 def _robust_float(s: str) -> float:
@@ -107,9 +144,12 @@ def read_history() -> dict[str, list[dict]]:
     return history
 
 
-def plot_progress(history: dict[str, list[dict]]) -> None:
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
-    for ax, name in zip(axes, ("d=256", "d=512", "d=768")):
+def plot_progress(history: dict[str, list[dict]], rnd: int) -> None:
+    models = _models_for_round(history, rnd) or list(ROUND_MODELS[rnd])
+    fig, axes = plt.subplots(1, len(models), figsize=(5 * len(models), 4.5),
+                             squeeze=False)
+    axes = axes[0]
+    for ax, name in zip(axes, models):
         timeline = _ptl.iter_timeline(*TRAIN_LOGS[name])
         iters = [g for g, _, _ in timeline]
         tr = [t for _, t, _ in timeline]
@@ -157,23 +197,24 @@ def plot_progress(history: dict[str, list[dict]]) -> None:
         if ax is axes[0]:
             ax.legend(loc="upper right", fontsize=9)
 
-    n_snaps = sum(len(v) for v in history.values())
+    n_snaps = sum(len(history.get(m, [])) for m in models)
     fig.suptitle(
-        f"D2 SFT progress — log-loss curves + beam-7 eval overlays  "
+        f"D2 SFT progress — round {rnd}  "
         f"(epoch-adjusted x-axis; {n_snaps} snapshot rows)",
         y=1.02,
     )
     fig.tight_layout()
-    out = PLOTS / "d2_sft_progress.png"
+    out = PLOTS / f"d2_sft_progress_r{rnd}.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}")
 
 
-def plot_loss_vs_acc(history: dict[str, list[dict]]) -> None:
+def plot_loss_vs_acc(history: dict[str, list[dict]], rnd: int) -> None:
     fig, ax = plt.subplots(figsize=(7, 5))
-    colors = {"d=256": "#1f77b4", "d=512": "#ff7f0e", "d=768": "#2ca02c"}
-    for model, rows in history.items():
+    colors = MODEL_COLORS
+    subset = {m: history[m] for m in ROUND_MODELS[rnd] if m in history}
+    for model, rows in subset.items():
         if not rows:
             continue
         xs = [r["valid_loss"] for r in rows]
@@ -184,9 +225,8 @@ def plot_loss_vs_acc(history: dict[str, list[dict]]) -> None:
             ax.annotate(f"iter {r['train_iter']}", (x, y),
                         textcoords="offset points", xytext=(6, 4),
                         fontsize=7, color=colors.get(model, "gray"))
-    # Paper reference — faint dashed line per model at Fig-8 SFT beam-30 acc.
     for name, paper_ref in PAPER_SFT_BEAM30.items():
-        if name in history:
+        if name in subset:
             ax.axhline(paper_ref, linestyle="--", color=colors.get(name, "gray"),
                        linewidth=0.8, alpha=0.5)
             ax.text(0.02, paper_ref + 0.3, f"paper {name} SFT @beam30: {paper_ref:.1f}%",
@@ -195,12 +235,13 @@ def plot_loss_vs_acc(history: dict[str, list[dict]]) -> None:
 
     ax.set_xlabel("validation loss")
     ax.set_ylabel("beam-7 accuracy (%)")
-    ax.set_title("valid loss → beam-7 accuracy  (paper Fig 8 refs dashed)")
+    ax.set_title(f"valid loss → beam-7 accuracy  (round {rnd}; paper Fig 8 refs dashed)")
     ax.invert_xaxis()
     ax.grid(True, alpha=0.3)
-    ax.legend()
+    if subset:
+        ax.legend()
     fig.tight_layout()
-    out = PLOTS / "d2_loss_vs_acc.png"
+    out = PLOTS / f"d2_loss_vs_acc_r{rnd}.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}")
@@ -222,51 +263,96 @@ def parse_beam_sweep(slurm_path: Path) -> list[tuple[int, int, int]]:
     return [(w, by_width[w][0], by_width[w][1]) for w in sorted(by_width)]
 
 
-def plot_beam_sweep(history: dict[str, list[dict]]) -> None:
-    """One subplot per model; x = beam width, y = accuracy; one colored line
-    per snapshot (alpha scales with recency)."""
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), sharey=True)
-    for ax, name in zip(axes, ("d=256", "d=512", "d=768")):
+def plot_beam_sweep(history: dict[str, list[dict]], rnd: int) -> None:
+    """One subplot per model; x = beam width, y = accuracy. We highlight only
+    (a) the top-3 sweeps by accuracy at beam width 30 and (b) the most-recent
+    sweep. All other sweeps are rendered faintly as context. Legend lists
+    only the 4 highlighted entries (fewer if top-3 overlaps with most-recent
+    or fewer than 3 sweeps exist)."""
+    models = _models_for_round(history, rnd) or list(ROUND_MODELS[rnd])
+    fig, axes = plt.subplots(1, len(models), figsize=(5 * len(models), 4.5),
+                             sharey=True, squeeze=False)
+    axes = axes[0]
+    for ax, name in zip(axes, models):
         rows = history.get(name, [])
         if not rows:
             ax.set_title(f"{name} — no data")
             continue
-        # Only snapshots with a beam-sweep slurm file we can parse.
-        plotted = 0
-        n = len(rows)
+        sweeps: list[tuple[int, dict, list[int], list[float], float]] = []
         for idx, row in enumerate(rows):
             job = row.get("beam_slurm_job", "")
             if not job:
                 continue
-            slurm_file = REPO / f"slurm-{job}.out"
-            sweep = parse_beam_sweep(slurm_file)
+            sweep = parse_beam_sweep(REPO / f"slurm-{job}.out")
             if not sweep:
                 continue
             widths = [w for w, _, _ in sweep]
             accs = [100 * c / t if t else 0 for _, c, t in sweep]
-            # Alpha: older snapshots faded, latest opaque.
-            alpha = 0.25 + 0.75 * (idx + 1) / n
-            ax.plot(widths, accs, marker="o", markersize=4,
-                    linewidth=1.2, alpha=alpha,
-                    label=f"iter {row['train_iter']}")
-            plotted += 1
-        # Paper reference — dashed horizontal at SFT beam-30.
+            acc30 = next((a for w, a in zip(widths, accs) if w == 30), accs[-1])
+            sweeps.append((idx, row, widths, accs, acc30))
+
+        if not sweeps:
+            ax.set_title(f"{name} — no data")
+            continue
+
+        # Pick highlights: top-3 by beam-30 acc, plus the most-recent by idx.
+        top3 = sorted(sweeps, key=lambda s: s[4], reverse=True)[:3]
+        most_recent = max(sweeps, key=lambda s: s[0])
+        highlight_idxs = {s[0] for s in top3} | {most_recent[0]}
+
+        highlight_colors = {
+            top3[i][0]: c for i, c in zip(
+                range(len(top3)), ("#d62728", "#ff7f0e", "#2ca02c")
+            )
+        }
+        most_recent_color = "#1f77b4"
+
+        # Background — faded, no legend.
+        for idx, _row, widths, accs, _ in sweeps:
+            if idx in highlight_idxs:
+                continue
+            ax.plot(widths, accs, marker="o", markersize=3,
+                    linewidth=0.9, alpha=0.15, color="#7f7f7f")
+
+        # Highlights — thick, opaque, legend-visible. Draw most-recent last so
+        # it sits on top. If most-recent is also in top-3, keep the top-3 color
+        # but tag the label with "(most recent)".
+        drawn: set[int] = set()
+        for idx, row, widths, accs, acc30 in sorted(
+            top3, key=lambda s: s[4], reverse=True
+        ):
+            color = highlight_colors[idx]
+            label = f"iter {row['train_iter']}  (top @30: {acc30:.1f}%)"
+            if idx == most_recent[0]:
+                label += "  — most recent"
+            ax.plot(widths, accs, marker="o", markersize=5,
+                    linewidth=1.8, alpha=0.95, color=color, label=label)
+            drawn.add(idx)
+        if most_recent[0] not in drawn:
+            idx, row, widths, accs, acc30 = most_recent
+            ax.plot(widths, accs, marker="o", markersize=5,
+                    linewidth=1.8, alpha=0.95, color=most_recent_color,
+                    label=f"iter {row['train_iter']}  — most recent (@30: {acc30:.1f}%)")
+
         paper_ref = PAPER_SFT_BEAM30.get(name)
         if paper_ref is not None:
-            ax.axhline(paper_ref, linestyle="--", color="#7f7f7f", linewidth=1.0, alpha=0.7)
+            ax.axhline(paper_ref, linestyle="--", color="#7f7f7f",
+                       linewidth=1.0, alpha=0.7)
             ax.text(0.98, paper_ref + 0.3, f"paper SFT @30: {paper_ref:.1f}%",
                     transform=ax.get_yaxis_transform(),
                     ha="right", fontsize=7.5, color="#7f7f7f")
 
-        ax.set_title(f"{name}  ({plotted} sweeps)")
+        ax.set_title(f"{name}  ({len(sweeps)} sweeps)")
         ax.set_xlabel("beam width")
         ax.set_ylabel("accuracy (%)")
         ax.grid(True, alpha=0.3)
-        if plotted:
-            ax.legend(fontsize=8, loc="lower right")
-    fig.suptitle("Beam-width sweep per snapshot (newer = darker)", y=1.02)
+        ax.legend(fontsize=8, loc="lower right")
+    fig.suptitle(
+        f"Beam-width sweep — round {rnd}  (top-3 by acc@30 + most recent "
+        "highlighted; background sweeps faded)", y=1.02,
+    )
     fig.tight_layout()
-    out = PLOTS / "d2_beam_sweep.png"
+    out = PLOTS / f"d2_beam_sweep_r{rnd}.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}")
@@ -293,27 +379,31 @@ def read_analysis_history() -> dict[str, list[dict]]:
 
 # Paper Table 4 — 6-layer SFT accuracy numbers for overlay on the analyzer plot.
 PAPER_CONFUSION_ACC = {
-    "SIGN":     {"d=256": 0.522, "d=512": 0.523, "d=768": 0.521},
-    "OPERATOR": {"d=256": 0.943, "d=512": 0.941, "d=768": 0.942},
-    "NUMBER":   {"d=256": 0.911, "d=512": 0.905, "d=768": 0.903},
+    "SIGN":     {"d=256": 0.522, "d=512": 0.523, "d=768": 0.521,
+                 "d=256b": 0.522, "d=512r2": 0.523, "d=768r2": 0.521},
+    "OPERATOR": {"d=256": 0.943, "d=512": 0.941, "d=768": 0.942,
+                 "d=256b": 0.943, "d=512r2": 0.941, "d=768r2": 0.942},
+    "NUMBER":   {"d=256": 0.911, "d=512": 0.905, "d=768": 0.903,
+                 "d=256b": 0.911, "d=512r2": 0.905, "d=768r2": 0.903},
 }
 
 
-def plot_analysis_progress(analysis: dict[str, list[dict]]) -> None:
+def plot_analysis_progress(analysis: dict[str, list[dict]], rnd: int) -> None:
     """Two rows × three cols: top row = confusion-accuracy-by-category per
     model; bottom row = top circuit score for prev-token / within-monomial /
     delimiter heads per model. Dashed horizontals are paper Table-4 values
     where known."""
-    if not any(analysis.values()):
-        print(f"skip analysis plot — {ANALYSIS_CSV_PATH.name} empty")
+    subset = {m: analysis[m] for m in ROUND_MODELS[rnd] if m in analysis}
+    if not any(subset.values()):
+        print(f"skip analysis plot round {rnd} — no rows for {ROUND_MODELS[rnd]}")
         return
     fig, axes = plt.subplots(2, 3, figsize=(15, 7), sharex=True)
-    colors = {"d=256": "#1f77b4", "d=512": "#ff7f0e", "d=768": "#2ca02c"}
+    colors = MODEL_COLORS
 
     # --- top row: per-category greedy accuracy (SIGN / OPERATOR / NUMBER) ---
     cats = [("sign_acc", "SIGN"), ("op_acc", "OPERATOR"), ("num_acc", "NUMBER")]
     for ax, (key, cat_name) in zip(axes[0], cats):
-        for model, rows in analysis.items():
+        for model, rows in subset.items():
             if not rows:
                 continue
             xs = [r["train_iter"] for r in rows]
@@ -339,7 +429,7 @@ def plot_analysis_progress(analysis: dict[str, list[dict]]) -> None:
         ("delim_top_score", "delimiter head (L1 paper circuit)"),
     ]
     for ax, (key, title) in zip(axes[1], circuits):
-        for model, rows in analysis.items():
+        for model, rows in subset.items():
             if not rows:
                 continue
             xs = [r["train_iter"] for r in rows]
@@ -352,10 +442,10 @@ def plot_analysis_progress(analysis: dict[str, list[dict]]) -> None:
         ax.set_ylim(0, 1)
         ax.grid(True, alpha=0.3)
 
-    n_rows = sum(len(v) for v in analysis.values())
-    fig.suptitle(f"D2 analyzer-score progress  ({n_rows} snapshot rows)", y=1.01)
+    n_rows = sum(len(v) for v in subset.values())
+    fig.suptitle(f"D2 analyzer-score progress — round {rnd}  ({n_rows} snapshot rows)", y=1.01)
     fig.tight_layout()
-    out = PLOTS / "d2_analysis_progress.png"
+    out = PLOTS / f"d2_analysis_progress_r{rnd}.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}")
@@ -363,11 +453,12 @@ def plot_analysis_progress(analysis: dict[str, list[dict]]) -> None:
 
 def main() -> None:
     history = read_history()
-    plot_progress(history)
-    plot_loss_vs_acc(history)
-    plot_beam_sweep(history)
     analysis = read_analysis_history()
-    plot_analysis_progress(analysis)
+    for rnd in sorted(ROUND_MODELS):
+        plot_progress(history, rnd)
+        plot_loss_vs_acc(history, rnd)
+        plot_beam_sweep(history, rnd)
+        plot_analysis_progress(analysis, rnd)
 
 
 if __name__ == "__main__":
