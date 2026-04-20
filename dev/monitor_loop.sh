@@ -9,7 +9,22 @@ REPO="/resnick/groups/Hippo/jaeha/PolynomialDecomposition"
 cd "$REPO"
 LOG="$REPO/data_storage/things_on_paper/monitor/monitor.log"
 mkdir -p "$(dirname "$LOG")"
+PIDFILE="$REPO/data_storage/things_on_paper/monitor/monitor.pid"
 INTERVAL=${INTERVAL:-900}  # seconds
+
+# --- singleton guard + session detach ---
+if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+    echo "monitor already running (pid $(cat "$PIDFILE")); exiting."
+    exit 0
+fi
+# Detach from the controlling terminal so Claude-Code/SSH exits don't SIGHUP us.
+if [[ -z "${MONITOR_DETACHED:-}" ]]; then
+    MONITOR_DETACHED=1 nohup setsid bash "$0" "$@" >/dev/null 2>&1 &
+    echo "monitor loop detached (pid $!)"
+    exit 0
+fi
+echo $$ > "$PIDFILE"
+trap 'rm -f "$PIDFILE"' EXIT
 
 echo "monitor loop started (pid $$) at $(date)" >> "$LOG"
 

@@ -17,7 +17,49 @@ TS=$(date +%Y%m%d_%H%M%S)
 HUMAN_TS=$(date +"%Y-%m-%d %H:%M:%S")
 echo "=== $HUMAN_TS — pass start ==="
 
-# --- 1. snapshot (and delete previous snapshots to bound disk use) ---
+# CSV paths used both for rotation (below) and step 4 (append). Hoisted here
+# so step 1a can consult the CSV before rotating.
+CSV="$MONITOR_DIR/snapshot_history.csv"
+ACSV="$MONITOR_DIR/analysis_history.csv"
+
+# --- 1a. rotate old snapshots whose evaluations have already completed ---
+# Only delete snapshots whose timestamp is already present in snapshot_history.csv
+# (i.e. the eval finished and its row is recorded). Leave in-flight snapshots
+# alone so their queued eval jobs can still read them. Never touches
+# ``_best.pt`` (training best) or ``_snapshot_best.pt`` (preserved best).
+python3 - "$REPO/data_storage/things_on_paper/model" "$CSV" <<'PY' || true
+import csv, glob, os, re, sys
+model_dir, csv_path = sys.argv[1], sys.argv[2]
+# Build the set of (model, compact_ts) pairs that already have a CSV row.
+evaluated = set()
+if os.path.isfile(csv_path):
+    with open(csv_path) as f:
+        for row in csv.DictReader(f):
+            ts = row.get("timestamp", "")
+            # CSV has "YYYY-MM-DD HH:MM:SS"; snapshot files use "YYYYMMDD_HHMMSS".
+            ts_c = ts.replace("-", "").replace(" ", "_").replace(":", "")
+            evaluated.add((row.get("model", ""), ts_c))
+
+pat = re.compile(r"^d2_arch_(\d+)_l6_best_snapshot_(\d{8}_\d{6})\.pt$")
+removed = kept = 0
+for f in sorted(glob.glob(os.path.join(model_dir, "d2_arch_*_l6_best_snapshot_*.pt"))):
+    name = os.path.basename(f)
+    m = pat.match(name)
+    if not m:
+        # A malformed snapshot name — leave it alone. Never matches _snapshot_best.pt.
+        continue
+    D, ts = m.group(1), m.group(2)
+    if (f"d={D}", ts) in evaluated:
+        os.remove(f)
+        print(f"  rotated out (eval done): {name}")
+        removed += 1
+    else:
+        print(f"  keeping (eval pending): {name}")
+        kept += 1
+print(f"  rotation summary: removed={removed}, kept_pending={kept}")
+PY
+
+# --- 1b. snapshot the current training best (new timestamp) ---
 declare -A SNAP
 for D in 256 512 768; do
     SRC="$REPO/data_storage/things_on_paper/model/d2_arch_${D}_l6_best.pt"
@@ -26,17 +68,9 @@ for D in 256 512 768; do
         echo "WARN d=$D: no best checkpoint at $SRC — skipping snapshot"
         continue
     fi
-    # Purge older snapshots for this model before writing the new one.
-    OLD_PATTERN="$REPO/data_storage/things_on_paper/model/d2_arch_${D}_l6_best_snapshot_*.pt"
-    shopt -s nullglob
-    OLD_FILES=($OLD_PATTERN)
-    shopt -u nullglob
-    for f in "${OLD_FILES[@]}"; do
-        [[ "$f" != "$DST" ]] && rm -f "$f"
-    done
     cp "$SRC" "$DST"
     SNAP[$D]="d2_arch_${D}_l6_best_snapshot_${TS}"
-    echo "  d=$D snapshot → $(basename "$DST") (rotated out ${#OLD_FILES[@]} older)"
+    echo "  d=$D snapshot → $(basename "$DST")"
 done
 
 # --- 2. submit 9 jobs: greedy + beam eval + analysis combo for each model ---
@@ -79,7 +113,6 @@ while (( $(date +%s) < DEADLINE )); do
 done
 
 # --- 4. parse accuracies, append to CSV ---
-CSV="$MONITOR_DIR/snapshot_history.csv"
 if [[ ! -s "$CSV" ]]; then
     echo "timestamp,model,greedy_correct,greedy_total,greedy_acc,beam7_correct,beam7_total,beam7_acc,valid_loss,train_iter,beam_slurm_job" > "$CSV"
 fi
@@ -134,7 +167,6 @@ for D in 256 512 768; do
 done
 
 # --- 4b. pull analyzer scores (confusion.json + circuits.json) into a parallel CSV ---
-ACSV="$MONITOR_DIR/analysis_history.csv"
 if [[ ! -s "$ACSV" ]]; then
     echo "timestamp,model,train_iter,sign_acc,op_acc,num_acc,var_acc,sign_prob,op_prob,num_prob,prev_top_score,prev_top_LH,within_top_score,within_top_LH,delim_top_score,delim_top_LH,analysis_slurm_job" > "$ACSV"
 fi
