@@ -1,0 +1,187 @@
+#!/bin/bash
+# One-shot: snapshot the 3 training checkpoints, submit 6 eval jobs
+# (greedy+beam7 for each of d=256/512/768), wait for them, then rewrite
+# the snapshot history CSV that feeds the loss-vs-accuracy plot.
+#
+# Appends one row per model to ``dev/plots/snapshot_history.csv``.
+
+set -euo pipefail
+
+REPO="/resnick/groups/Hippo/jaeha/PolynomialDecomposition"
+MONITOR_DIR="$REPO/data_storage/things_on_paper/monitor"   # gitignored — monitor artefacts live here
+mkdir -p "$MONITOR_DIR"
+cd "$REPO"
+source "$REPO/.venv/bin/activate"
+
+TS=$(date +%Y%m%d_%H%M%S)
+HUMAN_TS=$(date +"%Y-%m-%d %H:%M:%S")
+echo "=== $HUMAN_TS — pass start ==="
+
+# --- 1. snapshot (and delete previous snapshots to bound disk use) ---
+declare -A SNAP
+for D in 256 512 768; do
+    SRC="$REPO/data_storage/things_on_paper/model/d2_arch_${D}_l6_best.pt"
+    DST="$REPO/data_storage/things_on_paper/model/d2_arch_${D}_l6_best_snapshot_${TS}.pt"
+    if [[ ! -s "$SRC" ]]; then
+        echo "WARN d=$D: no best checkpoint at $SRC — skipping snapshot"
+        continue
+    fi
+    # Purge older snapshots for this model before writing the new one.
+    OLD_PATTERN="$REPO/data_storage/things_on_paper/model/d2_arch_${D}_l6_best_snapshot_*.pt"
+    shopt -s nullglob
+    OLD_FILES=($OLD_PATTERN)
+    shopt -u nullglob
+    for f in "${OLD_FILES[@]}"; do
+        [[ "$f" != "$DST" ]] && rm -f "$f"
+    done
+    cp "$SRC" "$DST"
+    SNAP[$D]="d2_arch_${D}_l6_best_snapshot_${TS}"
+    echo "  d=$D snapshot → $(basename "$DST") (rotated out ${#OLD_FILES[@]} older)"
+done
+
+# --- 2. submit 9 jobs: greedy + beam eval + analysis combo for each model ---
+declare -A GREEDY_JOB BEAM_JOB ANALYSIS_JOB ANALYSIS_OUT
+BEAM_WIDTH=30
+BEAM_MAX_TEST=30   # beam-30 is ~4x slower than beam-7; keep sample count low enough to fit a 15-min cycle
+for D in 256 512 768; do
+    [[ -z "${SNAP[$D]:-}" ]] && continue
+    GREEDY_JOB[$D]=$(CKPT_TAG="${SNAP[$D]}" MAX_TEST=200 sbatch --parsable \
+        Training/things_on_paper/eval/run_greedy_eval.sh \
+        Training/things_on_paper/configs/d2_arch_${D}_l6.env test)
+    BEAM_JOB[$D]=$(CKPT_TAG="${SNAP[$D]}" MAX_TEST="$BEAM_MAX_TEST" sbatch --parsable \
+        Training/things_on_paper/eval/run_beam_eval.sh \
+        Training/things_on_paper/configs/d2_arch_${D}_l6.env test "$BEAM_WIDTH")
+    # Write analysis JSON into a per-snapshot dir so parallel passes don't overwrite each other.
+    ANALYSIS_OUT[$D]="$MONITOR_DIR/analysis_${SNAP[$D]}"
+    ANALYSIS_JOB[$D]=$(CKPT_TAG="${SNAP[$D]}" OUT_DIR="${ANALYSIS_OUT[$D]}" N_SAMPLES=200 LINE_IDX=0 \
+        sbatch --parsable \
+        Training/things_on_paper/analysis/run_analysis_combined.sh \
+        Training/things_on_paper/configs/d2_arch_${D}_l6.env)
+    echo "  d=$D submitted: greedy=${GREEDY_JOB[$D]} beam${BEAM_WIDTH}=${BEAM_JOB[$D]} analysis=${ANALYSIS_JOB[$D]}"
+done
+
+# --- 3. wait for all 9 to finish (or timeout at 15 min) ---
+DEADLINE=$(( $(date +%s) + 900 ))
+while (( $(date +%s) < DEADLINE )); do
+    RUNNING=0
+    for D in 256 512 768; do
+        for J in "${GREEDY_JOB[$D]:-}" "${BEAM_JOB[$D]:-}" "${ANALYSIS_JOB[$D]:-}"; do
+            [[ -z "$J" ]] && continue
+            STATE=$(sacct -j "$J" -n -X -o State 2>/dev/null | head -1 | tr -d ' ')
+            case "$STATE" in
+                COMPLETED|FAILED|CANCELLED|TIMEOUT|OUT_OF_MEMORY) ;;
+                *) RUNNING=$((RUNNING+1)) ;;
+            esac
+        done
+    done
+    (( RUNNING == 0 )) && break
+    sleep 10
+done
+
+# --- 4. parse accuracies, append to CSV ---
+CSV="$MONITOR_DIR/snapshot_history.csv"
+if [[ ! -s "$CSV" ]]; then
+    echo "timestamp,model,greedy_correct,greedy_total,greedy_acc,beam7_correct,beam7_total,beam7_acc,valid_loss,train_iter,beam_slurm_job" > "$CSV"
+fi
+
+extract_correct() {
+    # $1 = slurm-<N>.out path. Extracts "Correct: X.0 out of Y.0" → integer pair "X Y".
+    # %d coercion drops the ".0" float suffix without concatenating digits.
+    grep -E "^Correct:" "$1" 2>/dev/null | tail -1 | awk '{printf "%d %d\n", $2, $5}'
+}
+
+extract_beam() {
+    # $1 = slurm-<N>.out path, $2 = beam width. Extracts "Beam width $2: X out of Y"
+    tail -c 3000 "$1" 2>/dev/null | tr '\r' '\n' \
+        | grep -E "^Beam width $2:" | tail -1 | awk '{printf "%d %d\n", $4, $7}'
+}
+
+latest_train_iter_and_loss() {
+    # $1 = training-job slurm file. Returns "<global_iter> <valid_loss>" with
+    # epoch arithmetic handled in Python (d=256 is on epoch 2 already).
+    python3 "$REPO/dev/_parse_train_log.py" "$1"
+}
+
+TRAIN_JOBS=(63156718 63157920 63157921)  # d=256, d=512, d=768
+for idx in 0 1 2; do
+    D=$(echo "256 512 768" | cut -d' ' -f$((idx+1)))
+    [[ -z "${SNAP[$D]:-}" ]] && continue
+    g="$REPO/slurm-${GREEDY_JOB[$D]:-X}.out"
+    b="$REPO/slurm-${BEAM_JOB[$D]:-X}.out"
+    greedy_pair=$(extract_correct "$g")
+    # CSV legacy "beam7" columns track width 7 from the sweep so the
+    # historic chart keeps comparing like with like.
+    beam_pair=$(extract_beam "$b" 7)
+    gc=$(echo "$greedy_pair" | awk '{print $1+0}')
+    gt=$(echo "$greedy_pair" | awk '{print $2+0}')
+    bc=$(echo "$beam_pair" | awk '{print $1+0}')
+    bt=$(echo "$beam_pair" | awk '{print $2+0}')
+    gacc=$(awk -v c="$gc" -v t="$gt" 'BEGIN{if(t>0) printf "%.3f", 100*c/t; else print "NaN"}')
+    bacc=$(awk -v c="$bc" -v t="$bt" 'BEGIN{if(t>0) printf "%.3f", 100*c/t; else print "NaN"}')
+    train_info=$(latest_train_iter_and_loss "$REPO/slurm-${TRAIN_JOBS[$idx]}.out")
+    t_iter=${train_info%% *}
+    t_vloss=${train_info##* }
+    echo "$HUMAN_TS,d=$D,$gc,$gt,$gacc,$bc,$bt,$bacc,$t_vloss,$t_iter,${BEAM_JOB[$D]}" >> "$CSV"
+    echo "  d=$D results: greedy=$gc/$gt ($gacc%)  beam${BEAM_WIDTH}(@7)=$bc/$bt ($bacc%)  valid_loss=$t_vloss @ global_iter $t_iter"
+done
+
+# --- 4b. pull analyzer scores (confusion.json + circuits.json) into a parallel CSV ---
+ACSV="$MONITOR_DIR/analysis_history.csv"
+if [[ ! -s "$ACSV" ]]; then
+    echo "timestamp,model,train_iter,sign_acc,op_acc,num_acc,var_acc,sign_prob,op_prob,num_prob,prev_top_score,prev_top_LH,within_top_score,within_top_LH,delim_top_score,delim_top_LH,analysis_slurm_job" > "$ACSV"
+fi
+
+extract_analysis_row() {
+    # Arg 1 = confusion.json path, arg 2 = circuits.json path.
+    # Emits one CSV-ready fragment "sign_acc,op_acc,...,delim_top_LH" or empty
+    # string if either JSON is missing. Uses python for robust parsing.
+    python3 - "$1" "$2" <<'PY' 2>/dev/null || true
+import json, sys
+try:
+    conf = json.load(open(sys.argv[1]))
+    cir = json.load(open(sys.argv[2]))
+except Exception:
+    sys.exit(0)
+def pick(d, k, field, default=""):
+    return f"{d[k][field]:.3f}" if k in d and field in d[k] else str(default)
+def top(lst):
+    if not lst:
+        return ("", "")
+    L, H, score = lst[0]
+    return (f"{score:.3f}", f"L{L}H{H}")
+row = ",".join([
+    pick(conf, "SIGN", "acc"),
+    pick(conf, "OPERATOR", "acc"),
+    pick(conf, "NUMBER", "acc"),
+    pick(conf, "VARIABLE", "acc"),
+    pick(conf, "SIGN", "prob_mean"),
+    pick(conf, "OPERATOR", "prob_mean"),
+    pick(conf, "NUMBER", "prob_mean"),
+    *top(cir.get("previous_token_top", [])),
+    *top(cir.get("within_monomial_top", [])),
+    *top(cir.get("delimiter_top", [])),
+])
+print(row)
+PY
+}
+
+for D in 256 512 768; do
+    [[ -z "${SNAP[$D]:-}" ]] && continue
+    ADIR="${ANALYSIS_OUT[$D]:-}"
+    [[ -z "$ADIR" || ! -f "$ADIR/confusion.json" || ! -f "$ADIR/circuits.json" ]] && {
+        echo "  d=$D: analysis JSON missing — skipping analyzer CSV row"
+        continue
+    }
+    # pull iter from the same train-log we already parsed above
+    t_info=$(latest_train_iter_and_loss "$REPO/slurm-${TRAIN_JOBS[$(( (D==256)?0:(D==512)?1:2 ))]}.out")
+    t_iter=${t_info%% *}
+    row=$(extract_analysis_row "$ADIR/confusion.json" "$ADIR/circuits.json")
+    if [[ -n "$row" ]]; then
+        echo "$HUMAN_TS,d=$D,$t_iter,$row,${ANALYSIS_JOB[$D]}" >> "$ACSV"
+        echo "  d=$D analyzer: $row"
+    fi
+done
+
+# --- 5. regenerate the plots ---
+python3 "$REPO/dev/plot_snapshot_history.py" || echo "plot regeneration failed (non-fatal)"
+echo "=== pass complete ==="
