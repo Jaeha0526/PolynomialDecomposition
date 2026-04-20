@@ -49,9 +49,13 @@ from bgrpo import (  # noqa: E402
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--model_name", required=True,
-                   help="SFT checkpoint filename under data_storage/model/")
+                   help="SFT checkpoint filename under --model_dir (default: data_storage/model/)")
     p.add_argument("--config_name", required=True,
-                   help="JSON config filename under data_storage/model/model_configurations/")
+                   help="JSON config filename under --config_dir (default: data_storage/model/model_configurations/)")
+    p.add_argument("--model_dir", default=None,
+                   help="Override for directory containing the .pt checkpoint (default: data_storage/model/)")
+    p.add_argument("--config_dir", default=None,
+                   help="Override for directory containing the config JSON (default: data_storage/model/model_configurations/)")
     p.add_argument("--dataset_path", required=True,
                    help="Path to training prompts (one per line, '?-separated format)")
     p.add_argument("--output_dir", required=True)
@@ -90,8 +94,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    config_path = PROJECT_ROOT.parent / "data_storage" / "model" / "model_configurations" / args.config_name
-    model_dir_path = PROJECT_ROOT.parent / "data_storage" / "model"
+    default_model_dir = PROJECT_ROOT.parent / "data_storage" / "model"
+    default_config_dir = default_model_dir / "model_configurations"
+    model_dir_path = Path(args.model_dir) if args.model_dir else default_model_dir
+    config_dir_path = Path(args.config_dir) if args.config_dir else default_config_dir
+    config_path = config_dir_path / args.config_name
 
     model, tokenizer = load_model_and_tokenizer(
         config_path=str(config_path),
@@ -108,11 +115,26 @@ def main() -> None:
     # validator parses ``<expanded>`` out of the same string.
     prompts = [ln.strip() for ln in open(args.dataset_path, encoding="utf-8") if ln.strip()]
 
+    # PAD and MASK characters — stripped from rollout completions before
+    # handing to the sympy validator, which can't parse them. The rollout
+    # produces max_new_tokens tokens with PAD filling positions past EOS.
+    _PAD = tokenizer.PAD_CHAR
+    _MASK = tokenizer.MASK_CHAR
+
     def correctness_fn(prompt_line: str, completion_str: str) -> bool:
         expanded = prompt_line.split("?")[0].strip()
-        if not completion_str.strip():
+        # Truncate at first PAD or MASK — everything after is filler.
+        for stop in (_PAD, _MASK):
+            i = completion_str.find(stop)
+            if i >= 0:
+                completion_str = completion_str[:i]
+        completion_str = completion_str.strip()
+        if not completion_str:
             return False
-        return validate_prediction_sympy(expanded, completion_str.strip())
+        # The sympy validator returns None for un-parseable completions
+        # (e.g. "Invalid prefix expression" from malformed multi-var preds).
+        # Treat those as incorrect rather than propagating None.
+        return bool(validate_prediction_sympy(expanded, completion_str))
 
     cfg = BGRPOConfig(
         learning_rate=args.lr,

@@ -206,6 +206,9 @@ class BGRPOTrainer:
         rollouts: list[RolloutResult] = []
         ref_logprobs_per_prompt: list[torch.Tensor] = []
         advantages_per_prompt: list[torch.Tensor] = []
+        rewards_per_prompt: list[torch.Tensor] = []
+        correct_per_prompt: list[float] = []
+        completion_lengths: list[int] = []
         correctness_summary = {"n_correct": 0, "n_total": 0}
 
         for prompt_str in prompts:
@@ -225,8 +228,32 @@ class BGRPOTrainer:
             rollouts.append(ro)
             ref_logprobs_per_prompt.append(ref_logprobs)
             advantages_per_prompt.append(advantages)
+            rewards_per_prompt.append(rewards.detach())
+            correct_per_prompt.append(float(correct_mask.mean().item()))
+            # Per-rollout effective completion length (tokens up to first PAD).
+            if ro.completion_mask.numel() > 0:
+                completion_lengths.extend(
+                    int(x) for x in ro.completion_mask.sum(dim=1).detach().cpu().tolist()
+                )
             correctness_summary["n_correct"] += int(correct_mask.sum().item())
             correctness_summary["n_total"] += int(correct_mask.numel())
+
+        # Rollout-level stats (constant across the num_iterations inner updates
+        # of this outer step — rollouts are frozen during Phase 2).
+        all_rewards = torch.cat(rewards_per_prompt) if rewards_per_prompt else torch.zeros(0)
+        import numpy as _np
+        lengths_arr = _np.array(completion_lengths, dtype=_np.float32) if completion_lengths else _np.zeros(0)
+        rollout_stats = {
+            "bgrpo/reward_mean": float(all_rewards.mean().item()) if all_rewards.numel() else 0.0,
+            "bgrpo/reward_std": float(all_rewards.std().item()) if all_rewards.numel() > 1 else 0.0,
+            "bgrpo/reward_min": float(all_rewards.min().item()) if all_rewards.numel() else 0.0,
+            "bgrpo/reward_max": float(all_rewards.max().item()) if all_rewards.numel() else 0.0,
+            "bgrpo/length_mean": float(lengths_arr.mean()) if lengths_arr.size else 0.0,
+            "bgrpo/length_std": float(lengths_arr.std()) if lengths_arr.size > 1 else 0.0,
+            "bgrpo/length_max": float(lengths_arr.max()) if lengths_arr.size else 0.0,
+            "bgrpo/per_prompt_correct_mean": float(_np.mean(correct_per_prompt)) if correct_per_prompt else 0.0,
+            "bgrpo/per_prompt_correct_nonzero": float(sum(1 for x in correct_per_prompt if x > 0)),
+        }
 
         # Phase 2: `num_iterations` PPO updates on the fixed rollouts.
         for inner in range(self.cfg.num_iterations):
@@ -238,13 +265,18 @@ class BGRPOTrainer:
                 for k, v in tele.items():
                     acc_tele[k] = acc_tele.get(k, 0.0) + v / len(rollouts)
 
-            if self.cfg.gradient_norm_clip is not None:
-                torch.nn.utils.clip_grad_norm_(
-                    self.model.parameters(), self.cfg.gradient_norm_clip,
-                )
+            # Measure the raw gradient norm BEFORE clipping so wandb shows the
+            # actual magnitude the clipper saw — useful for diagnosing when
+            # clipping is biting vs. idle.
+            grad_norm = torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(),
+                self.cfg.gradient_norm_clip or float("inf"),
+            )
+            acc_tele["bgrpo/grad_norm"] = float(grad_norm.item())
             self.optimizer.step()
 
-            self._log_step(acc_tele, correctness_summary, inner)
+            payload = {**acc_tele, **rollout_stats}
+            self._log_step(payload, correctness_summary, inner)
             self.global_step += 1
 
     # --- compute helpers -----------------------------------------------------
@@ -271,7 +303,9 @@ class BGRPOTrainer:
             telemetry = {
                 k: 0.0 for k in
                 ("bgrpo/loss", "bgrpo/pg_loss", "bgrpo/kl", "bgrpo/clip_frac",
-                 "bgrpo/mean_ratio", "bgrpo/adv_mean", "bgrpo/adv_std", "bgrpo/n_tokens")
+                 "bgrpo/mean_ratio", "bgrpo/log_ratio_std",
+                 "bgrpo/policy_logprob_mean", "bgrpo/ref_logprob_mean",
+                 "bgrpo/adv_mean", "bgrpo/adv_std", "bgrpo/n_tokens")
             }
             return zero, telemetry
 

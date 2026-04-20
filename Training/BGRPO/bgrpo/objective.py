@@ -85,12 +85,20 @@ class GRPOObjective:
             mean_ratio = (ratio * mask).sum() / n_tokens
             mean_kl = (per_token_kl * mask).sum() / n_tokens
             mean_pg = (per_token_pg * mask).sum() / n_tokens
+            mean_logp_policy = (logprobs_policy * mask).sum() / n_tokens
+            mean_logp_ref = (logprobs_reference * mask).sum() / n_tokens
+            # log|ratio| spread (std of per-token log-ratio) — useful for
+            # spotting when the policy has drifted far from the rollout.
+            log_ratio_std = ((log_ratio * mask).var(unbiased=False) + 1e-12).sqrt()
         telemetry = {
             "bgrpo/loss": float(loss.item()),
             "bgrpo/pg_loss": float(mean_pg.item()),
             "bgrpo/kl": float(mean_kl.item()),
             "bgrpo/clip_frac": float(clip_frac.item()),
             "bgrpo/mean_ratio": float(mean_ratio.item()),
+            "bgrpo/log_ratio_std": float(log_ratio_std.item()),
+            "bgrpo/policy_logprob_mean": float(mean_logp_policy.item()),
+            "bgrpo/ref_logprob_mean": float(mean_logp_ref.item()),
             "bgrpo/adv_mean": float(advantages.mean().item()),
             "bgrpo/adv_std": float(advantages.std(unbiased=False).item()),
             "bgrpo/n_tokens": float(n_tokens.item()),
