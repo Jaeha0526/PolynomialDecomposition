@@ -52,6 +52,7 @@ KL_BETA="${KL_BETA:-0.01}"
 CLIP_EPS="${CLIP_EPS:-0.2}"
 SAVE_STEPS="${SAVE_STEPS:-5}"
 MAX_NEW_TOK="${MAX_NEW_TOK:-150}"
+START_OUTER_STEP="${START_OUTER_STEP:-0}"
 
 if [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
     REPO="$SLURM_SUBMIT_DIR"
@@ -61,7 +62,10 @@ else
 fi
 
 BGRPO_ROOT="${REPO}/data_storage/things_on_paper/BGRPO"
-MODEL_DIR="${REPO}/data_storage/things_on_paper/model"
+# MODEL_DIR default = things_on_paper/model (SFT snapshot location). Override
+# via `MODEL_DIR=... sbatch run_bgrpo.sh` for continuation runs that start
+# from a BGRPO checkpoint dir (containing model.pt).
+MODEL_DIR="${MODEL_DIR:-${REPO}/data_storage/things_on_paper/model}"
 CONFIG_DIR="${BGRPO_ROOT}/configs"
 DATASET_PATH="${DATASET_PATH:-${REPO}/data_storage/things_on_paper/dataset/d2/training_dataset.txt}"
 OUTPUT_DIR="${BGRPO_ROOT}/runs/${RUN_TAG}"
@@ -93,5 +97,6 @@ python3 run_bgrpo.py \
     --kl_beta "$KL_BETA" \
     --clip_epsilon "$CLIP_EPS" \
     --save_steps "$SAVE_STEPS" \
+    --start_outer_step "$START_OUTER_STEP" \
     ${WANDB_PROJECT:+--wandb_project "$WANDB_PROJECT"} \
     ${WANDB_RUN_NAME:+--wandb_run_name "$WANDB_RUN_NAME"}

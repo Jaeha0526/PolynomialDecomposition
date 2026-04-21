@@ -66,6 +66,14 @@ def build_reward(cfg: RewardConfig, device: Optional[torch.device] = None) -> Re
         correct_by_rank = correct_r * torch.exp(ranks / base)
 
     def _reward(correct_mask: torch.Tensor) -> torch.Tensor:
+        # Belt-and-suspenders: if an upstream bug returned < w rollouts (e.g.
+        # beam search collapsed because the prompt hit block_size), pad with
+        # zeros so training doesn't crash mid-run. Rollout.py already pads to
+        # w; this is defensive coverage for future regressions.
+        if correct_mask.shape[0] < w:
+            pad = torch.zeros(w - correct_mask.shape[0],
+                              dtype=correct_mask.dtype, device=correct_mask.device)
+            correct_mask = torch.cat([correct_mask, pad])
         assert correct_mask.shape == (w,), (
             f"expected correct_mask of shape ({w},), got {tuple(correct_mask.shape)}"
         )

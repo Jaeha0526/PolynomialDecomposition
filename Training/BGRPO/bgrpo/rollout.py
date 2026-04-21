@@ -260,6 +260,20 @@ class BeamRollout:
 
             candidates.sort(key=lambda b: b[2], reverse=True)
             beams = candidates[:w]
+        # Pad to w if the search collapsed (can happen when the prompt is
+        # already at block_size so the seed beam is marked finished before it
+        # expands — produces a single-beam result that downstream rank-reward
+        # shape asserts reject). Duplicate the top beam with a tiny logp
+        # penalty so ranking stays stable.
+        if len(beams) < w:
+            pad_seed = beams[0] if beams else (
+                prompt_ids, [], 0.0, True,
+            )
+            seq, logp_list, total_logp, _finished = pad_seed
+            beams = list(beams) + [
+                (seq, logp_list, total_logp - 1e-9 * (i + 1), True)
+                for i in range(w - len(beams))
+            ]
         return beams
 
     # --- packing helpers -----------------------------------------------------

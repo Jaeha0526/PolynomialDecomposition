@@ -66,6 +66,11 @@ class BGRPOConfig:
     # Checkpointing
     save_steps: int = 5               # save every N outer iterations
     output_dir: Optional[Path] = None
+    # For continuation runs: label the first outer iteration as
+    # ``start_outer_step + 1`` so ckpt names / wandb step continue from a
+    # prior run. The prompt-pool iterator and the PPO loop itself still
+    # start from scratch — this is purely a labelling offset.
+    start_outer_step: int = 0
     # wandb
     wandb_project: Optional[str] = None
     wandb_run_name: Optional[str] = None
@@ -162,10 +167,13 @@ class BGRPOTrainer:
 
         batch_iter = self._iter_prompt_batches()
         for outer, batch in enumerate(batch_iter):
-            self.outer_iter = outer
+            # `labelled_outer` is 1-indexed and offset by start_outer_step so
+            # continuation runs produce ckpt-205/-210/... instead of -5/-10.
+            labelled_outer = cfg.start_outer_step + outer + 1
+            self.outer_iter = labelled_outer
             self._run_one_outer_iteration(batch)
             if cfg.output_dir and (outer + 1) % cfg.save_steps == 0:
-                self._save_checkpoint(f"checkpoint-{outer + 1}")
+                self._save_checkpoint(f"checkpoint-{labelled_outer}")
 
         if cfg.output_dir:
             self._save_checkpoint("checkpoint-final")

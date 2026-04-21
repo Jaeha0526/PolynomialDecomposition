@@ -86,6 +86,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--gradient_norm_clip", type=float, default=1.0)
     # Checkpointing / logging
     p.add_argument("--save_steps", type=int, default=5)
+    p.add_argument("--start_outer_step", type=int, default=0,
+                   help="Continuation-run label offset: first outer iter is "
+                        "written as `start_outer_step + 1` so ckpts extend a "
+                        "prior run's numbering (e.g. 200 → ckpt-205, -210, ...). "
+                        "The PPO loop itself still starts fresh.")
     p.add_argument("--wandb_project", default=None)
     p.add_argument("--wandb_run_name", default=None)
     return p.parse_args()
@@ -160,6 +165,7 @@ def main() -> None:
             kl_beta=args.kl_beta,
         ),
         save_steps=args.save_steps,
+        start_outer_step=args.start_outer_step,
         output_dir=Path(args.output_dir),
         wandb_project=args.wandb_project,
         wandb_run_name=args.wandb_run_name,
