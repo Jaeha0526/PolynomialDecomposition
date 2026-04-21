@@ -1,0 +1,13 @@
+run_tag,step,greedy_acc,beam30_acc
+bgrpo,5,7.5,20.0
+bgrpo,10,9.0,20.0
+bgrpo,15,13.0,23.333
+bgrpo,20,14.5,30.0
+bgrpo,25,15.0,28.333
+bgrpo,50,16.5,26.667
+bgrpo_rank,5,12.0,23.333
+bgrpo_rank,10,14.5,28.333
+bgrpo_rank,15,16.0,30.0
+bgrpo_rank,20,16.0,30.0
+bgrpo_rank,25,16.5,31.667
+bgrpo_rank,50,23.0,38.333

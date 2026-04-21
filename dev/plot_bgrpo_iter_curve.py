@@ -20,9 +20,12 @@ BGRPO_ROOT = REPO / "data_storage/things_on_paper/BGRPO/runs"
 OUT = BGRPO_ROOT.parent / "bgrpo_iter_curve.png"
 
 RUNS = [
-    ("grpo",       "vanilla GRPO",       "#1f77b4", "o"),
-    ("bgrpo",      "BGRPO (binary)",     "#2ca02c", "s"),
-    ("bgrpo_rank", "BGRPO (rank-aware)", "#d62728", "^"),
+    ("grpo",                  "vanilla GRPO (25 steps)",  "#1f77b4", "o"),
+    ("bgrpo",                 "BGRPO (25 steps)",         "#2ca02c", "s"),
+    ("bgrpo_rank",            "BGRPO rank (25 steps)",    "#d62728", "^"),
+    ("grpo_s200_d256",        "vanilla GRPO (200 steps)", "#17becf", "o"),
+    ("bgrpo_s200_d256",       "BGRPO (200 steps)",        "#8c564b", "s"),
+    ("bgrpo_rank_s200_d256",  "BGRPO rank (200 steps)",   "#e377c2", "^"),
 ]
 # SFT init = d=256 snapshot_best, beam@30 on the same 60-test set.
 # grpo/ckpt-10 sits at 26.667% and vanilla GRPO is flat → use it as the
@@ -31,16 +34,23 @@ SFT_BEAM30 = 26.667
 SFT_GREEDY = 12.5  # grpo/ckpt-10 greedy
 
 
-# All three runs trained for 25 policy-update steps; `checkpoint-final` is
-# TRL's alias for the last step (ckpt-25 and ckpt-final are byte-identical).
-FINAL_STEP = 25
+# Short runs trained for 25 steps; the _s200_d256 runs trained for 200.
+# `checkpoint-final` is TRL's alias for the last step — we map it to the run's
+# configured total.
+FINAL_STEP_PER_RUN = {
+    "grpo": 25, "bgrpo": 25, "bgrpo_rank": 25,
+    "grpo_s200_d256": 200,
+    "bgrpo_s200_d256": 200,
+    "bgrpo_rank_s200_d256": 200,
+}
 
 
 def load_run(run: str) -> tuple[list[int], list[float], list[float]]:
+    final_step = FINAL_STEP_PER_RUN.get(run, 25)
     data: dict[int, tuple[float, float]] = {}
     for p in sorted((BGRPO_ROOT / run / "eval").glob("checkpoint-*/summary.json")):
         name = p.parent.name.removeprefix("checkpoint-")
-        n = FINAL_STEP if name == "final" else int(name)
+        n = final_step if name == "final" else int(name)
         summ = json.loads(p.read_text())
         greedy = summ.get("greedy", {}).get("acc")
         beam30 = summ.get("beam", {}).get("30", {}).get("acc")

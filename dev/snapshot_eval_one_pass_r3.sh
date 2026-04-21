@@ -317,7 +317,7 @@ PY
 #       either completed-but-didn't-write-CSV or cancelled/failed/timed out.
 # Keep the snapshot if any of its sidecar jobs is still PENDING/RUNNING.
 # Never touches ``_best.pt`` or ``_snapshot_best.pt`` (pattern mismatch).
-python3 - "$MODEL_DIR" "$CSV" "$BEAM_MAX_TEST" <<'PY' || true
+python3 - "$MODEL_DIR" "$CSV" "${BEAM_MAX_TEST:-60}" <<'PY' || true
 import csv, glob, os, re, subprocess, sys
 model_dir, csv_path, beam_cap_str = sys.argv[1], sys.argv[2], sys.argv[3]
 BEAM_CAP = int(beam_cap_str)   # beam7_total must equal this for "eval complete"
