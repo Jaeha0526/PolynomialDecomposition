@@ -3,7 +3,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
-#SBATCH --time=0-04:00:00
+#SBATCH --time=0-20:00:00
+#SBATCH --output=logs/slurm-%j.out
 # Evaluate one BGRPO checkpoint (greedy + beam sweep) and write results under
 #   data_storage/things_on_paper/BGRPO/runs/<run_tag>/eval/<ckpt_name>/
 #
@@ -16,7 +17,7 @@
 # Defaults:
 #   beam_width=30 (raise for more precision; use 20 for d=768-class models)
 #   greedy_max_test=200
-#   beam_max_test=60
+#   beam_max_test=100
 #
 # Config comes from data_storage/things_on_paper/BGRPO/configs/ (or --config_dir
 # override), default d2_arch_256_l6_snapshot_best.json (matches the SFT snapshot
@@ -28,7 +29,7 @@ RUN_TAG="${1:?usage: $0 <run_tag> <ckpt_name> [beam_width] [greedy_max_test] [be
 CKPT_NAME="${2:?usage: $0 <run_tag> <ckpt_name> [beam_width] [greedy_max_test] [beam_max_test]}"
 BEAM_WIDTH="${3:-30}"
 GREEDY_MAX_TEST="${4:-200}"
-BEAM_MAX_TEST="${5:-60}"
+BEAM_MAX_TEST="${5:-100}"
 
 CONFIG_NAME="${CONFIG_NAME:-d2_arch_256_l6_snapshot_best.json}"
 
