@@ -86,6 +86,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--gradient_norm_clip", type=float, default=1.0)
     # Checkpointing / logging
     p.add_argument("--save_steps", type=int, default=5)
+    p.add_argument("--save_at_steps", type=str, default="",
+                   help="Comma-separated absolute-step list. When set, "
+                        "overrides --save_steps and only saves at the listed "
+                        "outer iterations (after start_outer_step offset).")
     p.add_argument("--start_outer_step", type=int, default=0,
                    help="Continuation-run label offset: first outer iter is "
                         "written as `start_outer_step + 1` so ckpts extend a "
@@ -93,6 +97,10 @@ def parse_args() -> argparse.Namespace:
                         "The PPO loop itself still starts fresh.")
     p.add_argument("--wandb_project", default=None)
     p.add_argument("--wandb_run_name", default=None)
+    p.add_argument("--seed", type=int, default=148,
+                   help="Seeds torch / cuda / random for reproducibility and "
+                        "prompt-shuffle ordering. Default 148 matches the "
+                        "original s=200 runs.")
     return p.parse_args()
 
 
@@ -165,11 +173,17 @@ def main() -> None:
             kl_beta=args.kl_beta,
         ),
         save_steps=args.save_steps,
+        save_at_steps=(
+            [int(s) for s in args.save_at_steps.split(",") if s.strip()]
+            if args.save_at_steps else None
+        ),
         start_outer_step=args.start_outer_step,
+        seed=args.seed,
         output_dir=Path(args.output_dir),
         wandb_project=args.wandb_project,
         wandb_run_name=args.wandb_run_name,
-        wandb_config={"model_name": args.model_name, "config_name": args.config_name},
+        wandb_config={"model_name": args.model_name, "config_name": args.config_name,
+                      "seed": args.seed},
     )
 
     trainer = BGRPOTrainer(

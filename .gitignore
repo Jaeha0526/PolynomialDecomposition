@@ -79,3 +79,6 @@ Thumbs.db
 
 dev/
 CLAUDE.md
+logs/
+
+wandb/

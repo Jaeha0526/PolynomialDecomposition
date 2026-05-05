@@ -64,7 +64,11 @@ class BGRPOConfig:
     reward: RewardConfig = field(default_factory=RewardConfig)
     objective: ObjectiveConfig = field(default_factory=ObjectiveConfig)
     # Checkpointing
-    save_steps: int = 5               # save every N outer iterations
+    save_steps: int = 5               # save every N outer iterations (used when save_at_steps is None)
+    # Explicit absolute-step list. When set, overrides save_steps: only save
+    # if labelled_outer is in this list. Lets runs save non-uniform ckpts
+    # (e.g. dense early, sparse late) without writing intermediates.
+    save_at_steps: Optional[list[int]] = None
     output_dir: Optional[Path] = None
     # For continuation runs: label the first outer iteration as
     # ``start_outer_step + 1`` so ckpt names / wandb step continue from a
@@ -154,6 +158,9 @@ class BGRPOTrainer:
 
     def train(self) -> None:
         cfg = self.cfg
+        torch.manual_seed(cfg.seed)
+        torch.cuda.manual_seed_all(cfg.seed)
+        random.seed(cfg.seed)
         if cfg.wandb_project:
             wandb.init(project=cfg.wandb_project, name=cfg.wandb_run_name,
                        config={**cfg.wandb_config,
@@ -172,8 +179,13 @@ class BGRPOTrainer:
             labelled_outer = cfg.start_outer_step + outer + 1
             self.outer_iter = labelled_outer
             self._run_one_outer_iteration(batch)
-            if cfg.output_dir and (outer + 1) % cfg.save_steps == 0:
-                self._save_checkpoint(f"checkpoint-{labelled_outer}")
+            if cfg.output_dir:
+                if cfg.save_at_steps is not None:
+                    should_save = labelled_outer in cfg.save_at_steps
+                else:
+                    should_save = (outer + 1) % cfg.save_steps == 0
+                if should_save:
+                    self._save_checkpoint(f"checkpoint-{labelled_outer}")
 
         if cfg.output_dir:
             self._save_checkpoint("checkpoint-final")

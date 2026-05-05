@@ -4,6 +4,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=0-08:00:00
+#SBATCH --output=logs/slurm-%j.out
 # BGRPO / GRPO training wrapper. One SLURM job per variant.
 #
 # Usage:
@@ -51,8 +52,11 @@ LR="${LR:-1e-5}"
 KL_BETA="${KL_BETA:-0.01}"
 CLIP_EPS="${CLIP_EPS:-0.2}"
 SAVE_STEPS="${SAVE_STEPS:-5}"
+SAVE_AT_STEPS="${SAVE_AT_STEPS:-}"   # comma-separated list; overrides SAVE_STEPS
 MAX_NEW_TOK="${MAX_NEW_TOK:-150}"
 START_OUTER_STEP="${START_OUTER_STEP:-0}"
+DECAY_BASE="${DECAY_BASE:-}"         # empty → python default (= num_generations)
+SEED="${SEED:-148}"                  # reproducibility / prompt-shuffle ordering
 
 if [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
     REPO="$SLURM_SUBMIT_DIR"
@@ -97,6 +101,9 @@ python3 run_bgrpo.py \
     --kl_beta "$KL_BETA" \
     --clip_epsilon "$CLIP_EPS" \
     --save_steps "$SAVE_STEPS" \
+    --save_at_steps "$SAVE_AT_STEPS" \
     --start_outer_step "$START_OUTER_STEP" \
+    --seed "$SEED" \
+    ${DECAY_BASE:+--decay_base "$DECAY_BASE"} \
     ${WANDB_PROJECT:+--wandb_project "$WANDB_PROJECT"} \
     ${WANDB_RUN_NAME:+--wandb_run_name "$WANDB_RUN_NAME"}
