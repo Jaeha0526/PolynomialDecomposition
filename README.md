@@ -1,6 +1,6 @@
 # Discovering Hidden Algebraic Structures via Transformers with Rank-Aware Beam GRPO
 
-This repository contains code and resources for the paper ["Discovering Hidden Algebraic Structures via Transformers with Rank-Aware Beam GRPO"](https://openreview.net/forum?id=lO9q5itiqK&invitationId=ICML.cc/2025/Workshop/MOSS/Submission72/-/Revision&referrer=%5BTasks%5D(%2Ftasks)). Our research explores the potential of transformer models to recognize and decompose hidden algebraic substructures within polynomials.
+This repository contains code and resources for the paper ["Discovering Hidden Algebraic Structures via Transformers with Rank-Aware Beam GRPO"](https://openreview.net/forum?id=Vxf8QDIA6Z). Our research explores the potential of transformer models to recognize and decompose hidden algebraic substructures within polynomials.
 
 ## Contents
 
@@ -320,3 +320,23 @@ The `Polynomial_decomposition.ipynb` Jupyter notebook provides a comprehensive w
 4. Rank-aware GRPO reinforcement learning fine-tuning
 
 This notebook serves as a complete tutorial for polynomial decomposition tasks.
+
+
+## Citation
+
+If you use this code or build on our work, please cite:
+
+```bibtex
+@article{huh2026discovering,
+  title   = {Discovering Hidden Algebraic Structures via Transformers with Rank-Aware Beam GRPO},
+  author  = {Huh, Gio and Lee, Jaeha and Su, Ning and Yu, Tony Yue},
+  journal = {Transactions on Machine Learning Research},
+  year    = {2026},
+  url     = {https://openreview.net/forum?id=Vxf8QDIA6Z}
+}
+```
+
+
+## License
+
+This project is released under the MIT License. See [LICENSE](LICENSE) for details.

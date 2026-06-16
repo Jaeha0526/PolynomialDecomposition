@@ -1,22 +1,39 @@
+# Virtual environments
 .venv
 venv
-wandb
+
+# Experiment tracking
+wandb/
+
+# Tests / scratch
 test/
-.claude/
 test_outputs/
-dev/
+
+# Local dev symlink (points into a private tree)
+/dev
+
+# Claude / project-local
+.claude/
+CLAUDE.md
+logs/
 
 # Poetry cache/build artifacts (poetry.lock IS tracked)
 .poetry-cache/
-dist/
 
 # SLURM and ad-hoc logs
 slurm-*.out
 tea_debug.log
 
-# Paper-experiment scratch (excluded for now — kept private while iterating)
-Training/things_on_paper/
-data_storage/things_on_paper/
+# Paper-experiment scratch: scripts/configs ARE tracked for reproduction;
+# exclude generated data, logs, notebooks, and caches.
+Training/things_on_paper/data/
+Training/things_on_paper/__pycache__/
+Training/things_on_paper/**/logs/
+Training/things_on_paper/**/*.out
+Training/things_on_paper/*.ipynb
+Training/things_on_paper/dag_vertex_count_top_cases.txt
+# data_storage scratch is a symlink into a private tree — keep fully ignored
+data_storage/things_on_paper
 
 # Python cache files
 __pycache__/
@@ -59,6 +76,10 @@ data_storage/outputs/*
 data_storage/dataset/predictions/
 data_storage/model/BGRPO
 
+# Snapshot artifacts (symlinks into private scratch)
+data_storage/model/*_snapshot.pt
+data_storage/model/model_configurations/*_snapshot.json
+
 # Large files
 data_storage/dataset/single_variable/training_dataset.txt
 data_storage/dataset/multi_variable/training_dataset.txt
@@ -76,9 +97,3 @@ data_storage/outputs/_BGRPO/checkpoint-*/model.safetensors
 # OS files
 .DS_Store
 Thumbs.db
-
-dev/
-CLAUDE.md
-logs/
-
-wandb/
